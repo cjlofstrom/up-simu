@@ -71,11 +71,11 @@ export const ConversationInterface: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white p-4">
+    <div className="min-h-screen bg-gradient-to-b from-primary-50 to-white p-4">
       <div className="max-w-md mx-auto pt-4">
         <div className="bg-white rounded-lg shadow-md p-4 mb-4">
           <div className="flex justify-between items-center">
-            <h2 className="text-lg font-semibold text-blue-800">{document?.title}</h2>
+            <h2 className="text-lg font-semibold text-primary-800">{document?.title}</h2>
             {renderStars()}
           </div>
           <div className="mt-2 text-sm text-gray-600">
@@ -85,7 +85,7 @@ export const ConversationInterface: React.FC = () => {
 
         <div className="bg-white rounded-lg shadow-md p-6 mb-4">
           <div className="flex items-start gap-3 mb-6">
-            <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold">
+            <div className="w-10 h-10 bg-primary-600 rounded-full flex items-center justify-center text-white font-bold">
               AI
             </div>
             <div className="flex-1">
@@ -107,7 +107,7 @@ export const ConversationInterface: React.FC = () => {
                 key={option.id}
                 onClick={() => handleOptionSelect(option)}
                 disabled={showFeedback}
-                className="w-full text-left p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full text-left p-4 bg-primary-50 rounded-lg hover:bg-primary-100 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {option.text}
               </button>
@@ -117,7 +117,7 @@ export const ConversationInterface: React.FC = () => {
           {currentStep?.options.length === 0 && (
             <button
               onClick={() => setCurrentScreen('selection')}
-              className="w-full mt-4 bg-blue-600 text-white rounded-lg py-3 font-semibold hover:bg-blue-700 transition-colors duration-200"
+              className="w-full mt-4 bg-primary-600 text-white rounded-lg py-3 font-semibold hover:bg-primary-700 transition-colors duration-200"
             >
               Back to Documents
             </button>

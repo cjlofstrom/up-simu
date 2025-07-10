@@ -34,9 +34,9 @@ export const ProgressTracking: React.FC = () => {
   const maxStars = documents.length * 3;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white p-4">
+    <div className="min-h-screen bg-gradient-to-b from-primary-50 to-white p-4">
       <div className="max-w-md mx-auto pt-8">
-        <h1 className="text-3xl font-bold text-blue-900 text-center mb-4">
+        <h1 className="text-3xl font-bold text-primary-900 text-center mb-4">
           Your Progress
         </h1>
         
@@ -46,7 +46,7 @@ export const ProgressTracking: React.FC = () => {
             <div className="flex justify-center mb-2">
               {renderStars(Math.round((totalStars / maxStars) * 3))}
             </div>
-            <p className="text-2xl font-bold text-blue-800">
+            <p className="text-2xl font-bold text-primary-800">
               {totalStars} / {maxStars} Stars
             </p>
           </div>
@@ -62,7 +62,7 @@ export const ProgressTracking: React.FC = () => {
             return (
               <div key={doc.id} className="bg-white rounded-lg shadow-md p-6">
                 <div className="flex justify-between items-start mb-3">
-                  <h3 className="text-lg font-semibold text-blue-800">
+                  <h3 className="text-lg font-semibold text-primary-800">
                     {doc.title}
                   </h3>
                   {renderStars(stars)}
@@ -75,7 +75,7 @@ export const ProgressTracking: React.FC = () => {
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
                     <div 
-                      className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                      className="bg-primary-600 h-2 rounded-full transition-all duration-300"
                       style={{ width: `${(keywordsFound / totalKeywords) * 100}%` }}
                     />
                   </div>
@@ -83,7 +83,7 @@ export const ProgressTracking: React.FC = () => {
 
                 <button
                   onClick={() => handleContinue(doc.id)}
-                  className="w-full bg-blue-600 text-white rounded-lg py-2 font-semibold hover:bg-blue-700 transition-colors duration-200"
+                  className="w-full bg-primary-600 text-white rounded-lg py-2 font-semibold hover:bg-primary-700 transition-colors duration-200"
                 >
                   {progress ? 'Continue' : 'Start'}
                 </button>
