@@ -203,6 +203,19 @@ export class ResponseEvaluator {
     const actualRequiredFound = requiredKeywordsFound.length;
     const totalRequired = keywords.required.length;
     
+    // Debug logging for Volvo scenario
+    if (scenario.id === 'volvo') {
+      console.log('Volvo scenario evaluation:', {
+        userResponse: userResponse.substring(0, 100),
+        requiredKeywordsFound,
+        actualRequiredFound,
+        totalRequired,
+        hasCloseNumericalAnswer,
+        yearKeywords,
+        numericalHints
+      });
+    }
+    
     // Generate summary feedback
     if (actualRequiredFound > 0 || hasCloseNumericalAnswer) {
       const rightParts: string[] = [];
@@ -250,12 +263,20 @@ export class ResponseEvaluator {
       });
     }
     
-    if (hasForbiddenWords && !hasCloseNumericalAnswer) {
+    // For close numerical answers, don't count the wrong year as a forbidden word
+    let effectiveForbiddenCount = forbiddenKeywordsFound.length;
+    if (hasCloseNumericalAnswer && scenario.id === 'volvo') {
+      // Remove year-related forbidden words from count
+      const nonYearForbiddenWords = forbiddenKeywordsFound.filter(word => !/^\d{4}$/.test(word));
+      effectiveForbiddenCount = nonYearForbiddenWords.length;
+    }
+    
+    if (effectiveForbiddenCount > 0 && !hasCloseNumericalAnswer) {
       stars = 0;
       feedback = scenario.feedback.poor;
-    } else if (hasCloseNumericalAnswer && forbiddenKeywordsFound.length > 0) {
-      // If they have a close numerical answer but used a forbidden keyword (like "1928")
-      stars = 0.5; // Half star
+    } else if (hasCloseNumericalAnswer && effectiveForbiddenCount > 0) {
+      // Has close year but also non-year forbidden words
+      stars = 0.5;
       feedback = scenario.feedback.needsWork;
     } else if (actualRequiredFound === totalRequired) {
       // All required keywords found
@@ -328,7 +349,26 @@ export class ResponseEvaluator {
       } else if (isSimpleNoFollowedByPolicy) {
         // Already handled above
         stars = 2;
+      } else if (hasCloseNumericalAnswer && actualRequiredFound >= 1) {
+        // Has close year AND at least one other correct answer
+        // 0.5 for close year + 1 for one correct answer = 1.5 stars
+        if (scenario.id === 'volvo') {
+          console.log('Volvo - 1.5 star branch hit!', {
+            hasCloseNumericalAnswer,
+            actualRequiredFound
+          });
+        }
+        stars = 1.5;
+        feedback = scenario.feedback.needsWork;
       } else {
+        // Log why we're in this branch
+        if (scenario.id === 'volvo') {
+          console.log('Volvo - falling to else branch:', {
+            hasCloseNumericalAnswer,
+            actualRequiredFound,
+            condition: `hasCloseNumericalAnswer && actualRequiredFound >= 1 = ${hasCloseNumericalAnswer && actualRequiredFound >= 1}`
+          });
+        }
         stars = hasCloseNumericalAnswer ? 0.5 : 1;
         feedback = scenario.feedback.needsWork;
       }
