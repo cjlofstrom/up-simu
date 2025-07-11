@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { DocumentSelection } from './components/DocumentSelection';
 import { IntroScreen } from './components/IntroScreen';
+import { CallScreen } from './components/CallScreen';
 import { ConversationScreen } from './components/ConversationScreen';
 import { FeedbackScreen } from './components/FeedbackScreen';
 import { ProgressScreen } from './components/ProgressScreen';
@@ -9,7 +10,7 @@ import type { EvaluationResult } from './services/evaluator';
 import { gameState } from './services/gameState';
 import { scenarios } from './data/scenarios';
 
-type GameScreen = 'progress' | 'selection' | 'intro' | 'conversation' | 'feedback';
+type GameScreen = 'progress' | 'selection' | 'intro' | 'call' | 'conversation' | 'feedback';
 
 function App() {
   const [currentScreen, setCurrentScreen] = useState<GameScreen>('progress');
@@ -25,7 +26,7 @@ function App() {
   const handleStartScenario = () => {
     const progress = gameState.getScenarioProgress(selectedScenarioId);
     setCurrentAttempts(progress?.attempts || 0);
-    setCurrentScreen('conversation');
+    setCurrentScreen('call');
   };
 
   const handleSubmitResponse = (response: string) => {
@@ -46,6 +47,10 @@ function App() {
   };
 
   const handleRetry = () => {
+    setCurrentScreen('call');
+  };
+  
+  const handleAnswerCall = () => {
     setCurrentScreen('conversation');
   };
 
@@ -83,6 +88,14 @@ function App() {
         <IntroScreen 
           scenarioId={selectedScenarioId}
           onStart={handleStartScenario}
+        />
+      );
+    
+    case 'call':
+      return (
+        <CallScreen
+          scenarioId={selectedScenarioId}
+          onAnswer={handleAnswerCall}
         />
       );
     

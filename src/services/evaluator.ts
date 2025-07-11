@@ -188,7 +188,8 @@ export class ResponseEvaluator {
                                ((hasNoResponse && 
                                  (normalizedResponse.includes('polic') || normalizedResponse.includes('complian') || 
                                   normalizedResponse.includes('regulat') || normalizedResponse.includes('against') ||
-                                  normalizedResponse.includes('illegal') || normalizedResponse.includes('allowed'))) ||
+                                  normalizedResponse.includes('illegal') || normalizedResponse.includes('allowed') ||
+                                  normalizedResponse.includes('insider'))) ||
                                 // Also accept compliance refusals without explicit "no"
                                 (normalizedResponse.includes('against') && normalizedResponse.includes('polic')) ||
                                 (normalizedResponse.includes('cannot') && normalizedResponse.includes('polic')) ||
@@ -326,7 +327,8 @@ export class ResponseEvaluator {
         feedback = "Good job! You refused appropriately and mentioned policy. To strengthen your response further, you could mention specific regulations like SEC rules or the legal implications of insider trading.";
         summaryFeedback = "Great job on compliance awareness and appropriate boundaries!";
       }
-    } else if (actualRequiredFound >= 1 || hasCloseNumericalAnswer || hasFinancialRefusal) {
+    } else if (actualRequiredFound >= 1 || hasCloseNumericalAnswer || hasFinancialRefusal || 
+               (isFinancialScenario && hasNoResponse && bonusKeywordsFound.length > 0)) {
       // At least 1 key point covered = 1 star (or 2 for good financial refusal)
       if (hasFinancialRefusal && actualRequiredFound >= 1) {
         stars = 2;
@@ -346,6 +348,10 @@ export class ResponseEvaluator {
           bonusKeywordsFound,
           normalizedResponse: normalizedResponse.substring(0, 100) 
         });
+      } else if (isFinancialScenario && hasNoResponse && bonusKeywordsFound.includes('insider trading')) {
+        // Refusal with insider trading shows good understanding even without required keywords
+        stars = 2;
+        feedback = scenario.feedback.good;
       } else if (isSimpleNoFollowedByPolicy) {
         // Already handled above
         stars = 2;

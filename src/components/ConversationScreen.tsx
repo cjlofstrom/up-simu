@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Send, User } from 'lucide-react';
 import { scenarios } from '../data/scenarios';
+import { ThinkingIndicator } from './ThinkingIndicator';
 
 interface Message {
   id: string;
@@ -20,6 +21,7 @@ export const ConversationScreen: React.FC<ConversationScreenProps> = ({ scenario
   const [conversationComplete, setConversationComplete] = useState(false);
   const [followUpAttempts, setFollowUpAttempts] = useState<Record<string, number>>({});
   const [lastFollowUpQuestion, setLastFollowUpQuestion] = useState<string>('');
+  const [showThinking, setShowThinking] = useState(false);
   const scenario = scenarios[scenarioId];
 
   // Initialize with first question
@@ -43,6 +45,9 @@ export const ConversationScreen: React.FC<ConversationScreenProps> = ({ scenario
         sender: 'user'
       };
       setMessages(prev => [...prev, userMessage]);
+      
+      // Show thinking indicator
+      setShowThinking(true);
       
       // Track which keywords have been covered across all messages
       const allUserMessages = messages
@@ -146,8 +151,10 @@ export const ConversationScreen: React.FC<ConversationScreenProps> = ({ scenario
                        normalizedResponse.includes("can't") || normalizedResponse.includes('cannot');
           const hasFinanceKeywords = normalizedResponse.includes('money') || normalizedResponse.includes('tip') || 
                                     normalizedResponse.includes('invest') || normalizedResponse.includes('stock') ||
-                                    normalizedResponse.includes('trade') || normalizedResponse.includes('complia') ||
-                                    normalizedResponse.includes('polic') || normalizedResponse.includes('regulat');
+                                    normalizedResponse.includes('trad') || normalizedResponse.includes('complia') ||
+                                    normalizedResponse.includes('polic') || normalizedResponse.includes('regulat') ||
+                                    normalizedResponse.includes('insider') || normalizedResponse.includes('sec') ||
+                                    normalizedResponse.includes('legal') || normalizedResponse.includes('ethical');
           
           const isOffTopic = !hasYes && !hasNo && !hasFinanceKeywords && normalizedResponse.length > 5;
           
@@ -174,6 +181,7 @@ export const ConversationScreen: React.FC<ConversationScreenProps> = ({ scenario
             followUpText = "Am I talking to the right person? I'm lost. Will call back later.";
             // Mark conversation as complete after off-topic response
             setTimeout(() => {
+              setShowThinking(false);
               const confusedMessage: Message = {
                 id: (Date.now() + 1).toString(),
                 text: followUpText,
@@ -184,7 +192,7 @@ export const ConversationScreen: React.FC<ConversationScreenProps> = ({ scenario
               setIsSubmitting(false);
               // Submit with a special marker for off-topic
               setTimeout(() => onSubmit(allUserMessages + " [OFF_TOPIC]"), 1000);
-            }, 500);
+            }, 1500);
             return;
           } else if (hasCompleteResponse) {
             // Response is complete, end conversation successfully
@@ -226,6 +234,7 @@ export const ConversationScreen: React.FC<ConversationScreenProps> = ({ scenario
           // Add follow-up question
           setLastFollowUpQuestion(followUpText);
           setTimeout(() => {
+            setShowThinking(false);
             const followUpMessage: Message = {
               id: (Date.now() + 1).toString(),
               text: followUpText,
@@ -234,12 +243,15 @@ export const ConversationScreen: React.FC<ConversationScreenProps> = ({ scenario
             setMessages(prev => [...prev, followUpMessage]);
             setResponse('');
             setIsSubmitting(false);
-          }, 500);
+          }, 1500); // Increased delay to show thinking animation
         } else {
           // No appropriate follow-up, complete the conversation
-          setConversationComplete(true);
-          setIsSubmitting(false);
-          onSubmit(allUserMessages);
+          setTimeout(() => {
+            setShowThinking(false);
+            setConversationComplete(true);
+            setIsSubmitting(false);
+            onSubmit(allUserMessages);
+          }, 1000);
         }
       } else {
         // Conversation complete, evaluate all responses
@@ -292,6 +304,7 @@ export const ConversationScreen: React.FC<ConversationScreenProps> = ({ scenario
                 )}
               </div>
             ))}
+            {showThinking && <ThinkingIndicator />}
           </div>
         </div>
       </div>
