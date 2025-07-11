@@ -18,3 +18,27 @@
     opacity: 0;
   }
 }
+
+@keyframes starFlyIn {
+  0% {
+    transform: translateY(300px) scale(3) rotate(0deg);
+    opacity: 0;
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(50px) scale(2) rotate(180deg);
+  }
+  70% {
+    transform: translateY(-20px) scale(1.2) rotate(270deg);
+  }
+  85% {
+    transform: translateY(5px) scale(0.9) rotate(340deg);
+  }
+  95% {
+    transform: translateY(-2px) scale(1.05) rotate(355deg);
+  }
+  100% {
+    transform: translateY(0) scale(1) rotate(360deg);
+    opacity: 0;
+  }
+}

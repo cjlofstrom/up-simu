@@ -1,11 +1,15 @@
 import React from 'react';
 
-export const ThinkingIndicator: React.FC = () => {
+interface ThinkingIndicatorProps {
+  avatar?: string;
+}
+
+export const ThinkingIndicator: React.FC<ThinkingIndicatorProps> = ({ avatar }) => {
   return (
     <div className="flex justify-start">
       <div className="flex items-end gap-2 max-w-[80%]">
         <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
-          <span className="text-2xl">👩‍💼</span>
+          <span className="text-2xl">{avatar || '👤'}</span>
         </div>
         <div className="bg-white rounded-3xl rounded-bl-lg px-6 py-4 shadow-sm">
           <div className="flex items-center gap-3">

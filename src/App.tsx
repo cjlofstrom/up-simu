@@ -35,8 +35,7 @@ function App() {
     const result = evaluator.evaluate(response, scenario);
     setEvaluation(result);
     
-    // Update game state
-    gameState.updateScenarioProgress(selectedScenarioId, result.stars);
+    // Don't update game state here - it will be updated after animation in FeedbackScreen
     
     // Show processing screen first
     setCurrentScreen('processing');

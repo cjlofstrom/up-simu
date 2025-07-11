@@ -37,7 +37,7 @@ export const CallScreen: React.FC<CallScreenProps> = ({ scenarioId, onAnswer }) 
           <div className="flex flex-col items-center text-center">
             {/* Avatar */}
             <div className="w-32 h-32 bg-blue-500 rounded-full flex items-center justify-center mb-6">
-              <span className="text-5xl">👩‍💼</span>
+              <span className="text-5xl">{scenario.character.avatar || '👤'}</span>
             </div>
             
             {/* Caller Info */}

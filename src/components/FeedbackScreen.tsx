@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Star, AlertCircle, CheckCircle, StarHalf } from 'lucide-react';
 import type { EvaluationResult } from '../services/evaluator';
 import { scenarios } from '../data/scenarios';
+import { gameState } from '../services/gameState';
 
 interface FeedbackScreenProps {
   evaluation: EvaluationResult;
@@ -20,6 +21,55 @@ export const FeedbackScreen: React.FC<FeedbackScreenProps> = ({
 }) => {
   const { stars, feedback, summaryFeedback, detailedFeedback } = evaluation;
   const scenario = scenarios[scenarioId];
+  
+  // Get the base total stars (before adding current scenario stars)
+  const baseTotalStars = gameState.getTotalStars();
+  const [displayedStars, setDisplayedStars] = useState(baseTotalStars);
+  const [animatingStars, setAnimatingStars] = useState<number[]>([]);
+  const [hasUpdatedGameState, setHasUpdatedGameState] = useState(false);
+  
+  // Animate stars being added to the total
+  useEffect(() => {
+    // Only animate new stars that haven't been counted before
+    const currentBestScore = gameState.getScenarioProgress(scenarioId)?.bestScore || 0;
+    const newStarsEarned = Math.floor(stars) - currentBestScore;
+    const starsToAdd = Math.max(0, newStarsEarned);
+    
+    if (starsToAdd === 0) {
+      // No new stars to add, just update game state
+      if (!hasUpdatedGameState) {
+        gameState.updateScenarioProgress(scenarioId, stars);
+        setHasUpdatedGameState(true);
+      }
+      return;
+    }
+    
+    const delay = 800; // Delay before starting animation
+    const interval = 600; // Time between each star
+    
+    // Create array of star indices to animate
+    const starIndices = Array.from({ length: starsToAdd }, (_, i) => i);
+    
+    // Start animation after a delay
+    const timeoutId = setTimeout(() => {
+      starIndices.forEach((index, i) => {
+        setTimeout(() => {
+          setAnimatingStars(prev => [...prev, index]);
+          setDisplayedStars(prev => prev + 1);
+          
+          // Update game state after the last star animation
+          if (i === starIndices.length - 1 && !hasUpdatedGameState) {
+            setTimeout(() => {
+              gameState.updateScenarioProgress(scenarioId, stars);
+              setHasUpdatedGameState(true);
+            }, 300);
+          }
+        }, i * interval);
+      });
+    }, delay);
+    
+    return () => clearTimeout(timeoutId);
+  }, [stars, scenarioId, hasUpdatedGameState]);
 
   const renderStars = () => {
     const fullStars = Math.floor(stars);
@@ -68,9 +118,33 @@ export const FeedbackScreen: React.FC<FeedbackScreenProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4 relative">
+    <div className="min-h-screen bg-gray-900 flex flex-col relative">
+      {/* Header with animated star counter */}
+      <div className="fixed top-0 left-0 right-0 z-20 px-4 py-6">
+        <div className="flex justify-end max-w-4xl mx-auto">
+          <div className="flex items-center gap-2 bg-gray-800 text-white px-6 py-3 rounded-full relative">
+            <Star className="w-6 h-6 text-yellow-400 fill-yellow-400" />
+            <span className="text-xl font-medium transition-all duration-300">{displayedStars}</span>
+            
+            {/* Animated stars that fly to the counter */}
+            {animatingStars.map((index) => (
+              <div
+                key={index}
+                className="absolute inset-0 flex items-center justify-center pointer-events-none"
+                style={{
+                  animation: `starFlyIn 0.6s ease-out forwards`,
+                  animationDelay: `${index * 0.1}s`
+                }}
+              >
+                <Star className="w-8 h-8 text-yellow-400 fill-yellow-400" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+      
       {/* Background conversation hint */}
-      <div className="absolute inset-0 opacity-20 p-8 overflow-hidden">
+      <div className="absolute inset-0 opacity-20 p-8 overflow-hidden pt-24">
         <div className="max-w-2xl mx-auto">
           <div className="bg-blue-600 text-white rounded-3xl px-6 py-4 max-w-md">
             <p className="text-base">I heard you have insider tips on the upcoming Q3 earnings. Can you share them with me?</p>
@@ -79,20 +153,21 @@ export const FeedbackScreen: React.FC<FeedbackScreenProps> = ({
       </div>
       
       {/* Feedback Modal */}
-      <div className="max-w-lg w-full bg-white rounded-3xl shadow-2xl p-8 relative z-10">
-        {/* Header with scenario info */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
-              <span className="text-2xl">👩‍💼</span>
+      <div className="flex-1 flex items-center justify-center p-4">
+        <div className="max-w-lg w-full bg-white rounded-3xl shadow-2xl p-8 relative z-10">
+          {/* Header with scenario info */}
+          <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
+                <span className="text-2xl">{scenario.character.avatar || '👤'}</span>
+              </div>
+              <h3 className="text-xl font-semibold">{scenario.title}</h3>
             </div>
-            <h3 className="text-xl font-semibold">{scenario.title}</h3>
+            <div className="flex items-center gap-2">
+              <Star className="w-6 h-6 text-blue-500 fill-blue-500" />
+              <span className="text-xl font-medium text-blue-500">+{stars}</span>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Star className="w-6 h-6 text-blue-500 fill-blue-500" />
-            <span className="text-xl font-medium text-blue-500">+{stars}</span>
-          </div>
-        </div>
         
         {/* Stars */}
         <div className="flex justify-center mb-6">{renderStars()}</div>
@@ -127,12 +202,6 @@ export const FeedbackScreen: React.FC<FeedbackScreenProps> = ({
             </button>
           )}
         </div>
-        
-        {/* Avatar icon in bottom right */}
-        <div className="absolute bottom-4 right-4">
-          <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
-            <span className="text-xl">🏆</span>
-          </div>
         </div>
       </div>
     </div>

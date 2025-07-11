@@ -40,6 +40,7 @@ export const scenarios: Record<string, Scenario> = {
     character: {
       name: 'Ruth McLean',
       role: 'Client',
+      avatar: '👩‍💼',
     },
     question: "Hey! I heard you're good with money. Can you give me some insider tips?",
     keywords: {
@@ -81,6 +82,7 @@ export const scenarios: Record<string, Scenario> = {
     character: {
       name: 'Gustav Larson',
       role: 'Co-founder',
+      avatar: '👴',
     },
     question: 'Tell me about the first Volvo car we produced',
     keywords: {

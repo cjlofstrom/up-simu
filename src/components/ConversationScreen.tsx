@@ -398,7 +398,7 @@ export const ConversationScreen: React.FC<ConversationScreenProps> = ({
                 {message.sender === "character" ? (
                   <div className="flex items-end gap-2 max-w-[80%]">
                     <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
-                      <span className="text-2xl">👩‍💼</span>
+                      <span className="text-2xl">{scenario.character.avatar || '👤'}</span>
                     </div>
                     <div className="bg-blue-500 text-white rounded-3xl rounded-bl-lg px-6 py-4">
                       <p className="text-lg">{message.text}</p>
@@ -411,7 +411,7 @@ export const ConversationScreen: React.FC<ConversationScreenProps> = ({
                 )}
               </div>
             ))}
-            {showThinking && <ThinkingIndicator />}
+            {showThinking && <ThinkingIndicator avatar={scenario.character.avatar} />}
           </div>
         </div>
       </div>

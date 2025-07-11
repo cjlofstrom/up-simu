@@ -387,8 +387,14 @@ export class ResponseEvaluator {
       feedback = scenario.feedback.poor;
     }
 
-    // Clear summary feedback if rating is poor (0 stars)
+    // Clear summary feedback if rating is poor (0 stars) or if we have specific 3-star feedback
     if (stars === 0) {
+      summaryFeedback = '';
+    }
+    
+    // For 3-star financial responses with "You're on the money" feedback, combine into single message
+    if (stars === 3 && feedback === "You're on the money! Ruth seems irritated but you managed to not give in." && summaryFeedback) {
+      feedback = `${feedback} ${summaryFeedback}`;
       summaryFeedback = '';
     }
     
