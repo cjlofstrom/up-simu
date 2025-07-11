@@ -169,13 +169,13 @@ export const ConversationScreen: React.FC<ConversationScreenProps> = ({ scenario
                                 allUserText.includes('sec') || allUserText.includes('illegal');
           
           // Determine what's missing
-          const needsComplianceExplanation = hasRefusal && !hasCompliance && !hasRegulations && !hasPolicy;
+          const needsComplianceExplanation = hasRefusal && !hasCompliance && !hasRegulations && !hasPolicy && !hasInsiderInfo;
           const needsSpecifics = hasRefusal && (hasCompliance || hasRegulations || hasPolicy) && 
                                !hasInsiderInfo && !hasLegalEthical;
           
           // Check if response is already complete 
-          // Complete = has refusal + policy (basic compliance) OR has all three elements
-          const hasCompleteResponse = hasRefusal && hasPolicy;
+          // Complete = has refusal + (policy OR insider info OR compliance/regulations)
+          const hasCompleteResponse = hasRefusal && (hasPolicy || hasInsiderInfo || hasCompliance || hasRegulations);
           
           if (isOffTopic) {
             followUpText = "Am I talking to the right person? I'm lost. Will call back later.";
