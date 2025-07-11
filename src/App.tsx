@@ -3,6 +3,7 @@ import { DocumentSelection } from './components/DocumentSelection';
 import { IntroScreen } from './components/IntroScreen';
 import { CallScreen } from './components/CallScreen';
 import { ConversationScreen } from './components/ConversationScreen';
+import { ProcessingScreen } from './components/ProcessingScreen';
 import { FeedbackScreen } from './components/FeedbackScreen';
 import { ProgressScreen } from './components/ProgressScreen';
 import { evaluator } from './services/evaluator';
@@ -10,7 +11,7 @@ import type { EvaluationResult } from './services/evaluator';
 import { gameState } from './services/gameState';
 import { scenarios } from './data/scenarios';
 
-type GameScreen = 'progress' | 'selection' | 'intro' | 'call' | 'conversation' | 'feedback';
+type GameScreen = 'progress' | 'selection' | 'intro' | 'call' | 'conversation' | 'processing' | 'feedback';
 
 function App() {
   const [currentScreen, setCurrentScreen] = useState<GameScreen>('progress');
@@ -37,7 +38,13 @@ function App() {
     // Update game state
     gameState.updateScenarioProgress(selectedScenarioId, result.stars);
     
-    setCurrentScreen('feedback');
+    // Show processing screen first
+    setCurrentScreen('processing');
+    
+    // Then show feedback after a delay
+    setTimeout(() => {
+      setCurrentScreen('feedback');
+    }, 3000);
   };
 
   const handleContinue = () => {
@@ -104,6 +111,13 @@ function App() {
         <ConversationScreen 
           scenarioId={selectedScenarioId}
           onSubmit={handleSubmitResponse}
+        />
+      );
+    
+    case 'processing':
+      return (
+        <ProcessingScreen
+          scenarioId={selectedScenarioId}
         />
       );
     

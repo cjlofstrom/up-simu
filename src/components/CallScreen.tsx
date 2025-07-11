@@ -1,6 +1,7 @@
 import React from 'react';
-import { Phone, PhoneOff } from 'lucide-react';
+import { Phone, PhoneOff, Star } from 'lucide-react';
 import { scenarios } from '../data/scenarios';
+import { gameState } from '../services/gameState';
 
 interface CallScreenProps {
   scenarioId: string;
@@ -9,9 +10,17 @@ interface CallScreenProps {
 
 export const CallScreen: React.FC<CallScreenProps> = ({ scenarioId, onAnswer }) => {
   const scenario = scenarios[scenarioId];
+  const totalStars = gameState.getTotalStars();
   
   return (
     <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center p-4">
+      {/* Total stars display */}
+      <div className="fixed top-6 right-6">
+        <div className="flex items-center gap-2 bg-gray-800 text-white px-4 py-2 rounded-full">
+          <Star className="w-5 h-5 text-yellow-400 fill-yellow-400" />
+          <span className="text-lg font-medium">{totalStars}</span>
+        </div>
+      </div>
       <div className="w-full max-w-md">
         {/* Header */}
         <div className="text-center mb-12">
