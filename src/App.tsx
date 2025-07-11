@@ -125,6 +125,7 @@ function App() {
       return evaluation ? (
         <FeedbackScreen 
           evaluation={evaluation}
+          scenarioId={selectedScenarioId}
           onContinue={handleContinue}
           onRetry={handleRetry}
           attempts={currentAttempts + 1}

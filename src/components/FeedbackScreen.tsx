@@ -1,21 +1,25 @@
 import React from 'react';
 import { Star, AlertCircle, CheckCircle, StarHalf } from 'lucide-react';
 import type { EvaluationResult } from '../services/evaluator';
+import { scenarios } from '../data/scenarios';
 
 interface FeedbackScreenProps {
   evaluation: EvaluationResult;
+  scenarioId: string;
   onContinue: () => void;
   onRetry: () => void;
   attempts?: number;
 }
 
 export const FeedbackScreen: React.FC<FeedbackScreenProps> = ({ 
-  evaluation, 
+  evaluation,
+  scenarioId, 
   onContinue, 
   onRetry,
   attempts = 1
 }) => {
   const { stars, feedback, summaryFeedback, detailedFeedback } = evaluation;
+  const scenario = scenarios[scenarioId];
 
   const renderStars = () => {
     const fullStars = Math.floor(stars);
@@ -26,21 +30,21 @@ export const FeedbackScreen: React.FC<FeedbackScreenProps> = ({
         return (
           <Star
             key={i}
-            className="w-12 h-12 text-yellow-400 fill-yellow-400"
+            className="w-16 h-16 text-green-500 fill-green-500"
           />
         );
       } else if (i === fullStars && hasHalfStar) {
         return (
-          <div key={i} className="relative w-12 h-12">
-            <Star className="absolute w-12 h-12 text-gray-300" />
-            <StarHalf className="absolute w-12 h-12 text-yellow-400 fill-yellow-400" />
+          <div key={i} className="relative w-16 h-16">
+            <Star className="absolute w-16 h-16 text-gray-300" />
+            <StarHalf className="absolute w-16 h-16 text-green-500 fill-green-500" />
           </div>
         );
       } else {
         return (
           <Star
             key={i}
-            className="w-12 h-12 text-gray-300"
+            className="w-16 h-16 text-gray-300"
           />
         );
       }
@@ -49,10 +53,10 @@ export const FeedbackScreen: React.FC<FeedbackScreenProps> = ({
 
   const getPerformanceColor = () => {
     if (stars >= 3) return 'text-green-600';
-    if (stars >= 2) return 'text-blue-600';
-    if (stars >= 1) return 'text-orange-600';
-    if (stars >= 0.5) return 'text-amber-600';
-    return 'text-red-600';
+    if (stars >= 2) return 'text-gray-800';
+    if (stars >= 1) return 'text-gray-800';
+    if (stars >= 0.5) return 'text-gray-800';
+    return 'text-gray-800';
   };
 
   const getPerformanceText = () => {
@@ -64,106 +68,71 @@ export const FeedbackScreen: React.FC<FeedbackScreenProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
-      <div className="max-w-2xl w-full bg-white rounded-2xl shadow-xl p-8">
+    <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4 relative">
+      {/* Background conversation hint */}
+      <div className="absolute inset-0 opacity-20 p-8 overflow-hidden">
+        <div className="max-w-2xl mx-auto">
+          <div className="bg-blue-600 text-white rounded-3xl px-6 py-4 max-w-md">
+            <p className="text-base">I heard you have insider tips on the upcoming Q3 earnings. Can you share them with me?</p>
+          </div>
+        </div>
+      </div>
+      
+      {/* Feedback Modal */}
+      <div className="max-w-lg w-full bg-white rounded-3xl shadow-2xl p-8 relative z-10">
+        {/* Header with scenario info */}
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
+              <span className="text-2xl">👩‍💼</span>
+            </div>
+            <h3 className="text-xl font-semibold">{scenario.title}</h3>
+          </div>
+          <div className="flex items-center gap-2">
+            <Star className="w-6 h-6 text-blue-500 fill-blue-500" />
+            <span className="text-xl font-medium text-blue-500">+{stars}</span>
+          </div>
+        </div>
+        
+        {/* Stars */}
+        <div className="flex justify-center mb-6">{renderStars()}</div>
+        
+        {/* Performance text */}
         <div className="text-center mb-8">
-          <div className="flex justify-center mb-4">{renderStars()}</div>
-          <h2 className={`text-3xl font-bold mb-2 ${getPerformanceColor()}`}>
+          <h2 className={`text-3xl font-bold mb-4 ${getPerformanceColor()}`}>
             {getPerformanceText()}
           </h2>
-          <p className="text-lg text-gray-700">{feedback}</p>
+          <p className="text-lg text-gray-600">{feedback}</p>
           {summaryFeedback && (
-            <p className="text-md text-gray-600 mt-2">{summaryFeedback}</p>
+            <p className="text-md text-gray-500 mt-2">{summaryFeedback}</p>
           )}
         </div>
 
-        <div className="space-y-4 mb-8">
-          {detailedFeedback.requiredKeywordsFound.length > 0 && (
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-              <div className="flex items-start gap-3">
-                <CheckCircle className="w-5 h-5 text-green-600 mt-0.5" />
-                <div>
-                  <h4 className="font-semibold text-green-900 mb-1">Key Points Covered</h4>
-                  <p className="text-green-800 text-sm">
-                    {detailedFeedback.requiredKeywordsFound.join(', ')}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
+        {/* Remove detailed feedback sections for cleaner design */}
 
-          {detailedFeedback.bonusKeywordsFound.length > 0 && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <div className="flex items-start gap-3">
-                <Star className="w-5 h-5 text-blue-600 mt-0.5" />
-                <div>
-                  <h4 className="font-semibold text-blue-900 mb-1">Bonus Points Earned</h4>
-                  <p className="text-blue-800 text-sm">
-                    {detailedFeedback.bonusKeywordsFound.join(', ')}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {detailedFeedback.missingRequiredKeywords.length > 0 && attempts >= 3 && (
-            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-              <div className="flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-orange-600 mt-0.5" />
-                <div>
-                  <h4 className="font-semibold text-orange-900 mb-1">Missing Key Points</h4>
-                  <p className="text-orange-800 text-sm">
-                    Consider mentioning: {detailedFeedback.missingRequiredKeywords.join(', ')}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {detailedFeedback.numericalHints && detailedFeedback.numericalHints.length > 0 && (
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-              <div className="flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5" />
-                <div>
-                  <h4 className="font-semibold text-amber-900 mb-1">Helpful Hint</h4>
-                  <p className="text-amber-800 text-sm">
-                    {detailedFeedback.numericalHints.join(' ')}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {detailedFeedback.specificHints && detailedFeedback.specificHints.length > 0 && (
-            <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-              <div className="flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-purple-600 mt-0.5" />
-                <div>
-                  <h4 className="font-semibold text-purple-900 mb-1">Additional Hints</h4>
-                  <p className="text-purple-800 text-sm">
-                    {detailedFeedback.specificHints.join(' ')}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="flex gap-4">
+        {/* Action buttons */}
+        <div className="space-y-3">
+          <button
+            onClick={onContinue}
+            className="w-full bg-black text-white text-lg font-medium py-4 rounded-full hover:bg-gray-800 transition-colors"
+          >
+            I see
+          </button>
           {stars < 3 && (
             <button
               onClick={onRetry}
-              className="flex-1 bg-gray-100 text-gray-700 px-6 py-3 rounded-lg font-semibold hover:bg-gray-200 transition-colors"
+              className="w-full text-gray-600 text-base font-medium hover:text-gray-800 transition-colors"
             >
               Try Again
             </button>
           )}
-          <button
-            onClick={onContinue}
-            className="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
-          >
-            {stars === 3 ? 'Continue' : 'Next Scenario'}
-          </button>
+        </div>
+        
+        {/* Avatar icon in bottom right */}
+        <div className="absolute bottom-4 right-4">
+          <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
+            <span className="text-xl">🏆</span>
+          </div>
         </div>
       </div>
     </div>
