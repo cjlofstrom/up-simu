@@ -57,9 +57,13 @@ export const ConversationScreen: React.FC<ConversationScreenProps> = ({ scenario
       const hasAttemptedYear = yearPattern.test(allUserMessages);
       
       scenario.keywords.required.forEach(keyword => {
-        if (normalizedAllResponses.includes(keyword.toLowerCase()) || 
+        const keywordLower = keyword.toLowerCase();
+        if (normalizedAllResponses.includes(keywordLower) || 
             (keyword === 'ÖV4' && (normalizedAllResponses.includes('öv4') || normalizedAllResponses.includes('ov4'))) ||
-            (keyword === 'Jakob' && (normalizedAllResponses.includes('jakob') || normalizedAllResponses.includes('jacob')))) {
+            (keyword === 'Jakob' && (normalizedAllResponses.includes('jakob') || normalizedAllResponses.includes('jacob'))) ||
+            (keyword === 'policy' && (normalizedAllResponses.includes('policy') || normalizedAllResponses.includes('policies'))) ||
+            (keyword === 'not allowed' && (normalizedAllResponses.includes('not allowed') || normalizedAllResponses.includes('against'))) ||
+            (keyword === 'cannot' && (normalizedAllResponses.includes('cannot') || normalizedAllResponses.includes("can't") || normalizedAllResponses.includes('unable')))) {
           coveredInConversation.push(keyword);
         } else if (keyword === '1927' && hasAttemptedYear) {
           // User attempted to provide a year, don't ask for it again
@@ -85,8 +89,14 @@ export const ConversationScreen: React.FC<ConversationScreenProps> = ({ scenario
           // Check if we should force end the conversation
           if (followUpAttempts.forceEnd) {
             // End conversation after the retry attempt
+            // Don't include the confirmation response in the evaluation
+            const previousUserMessages = messages
+              .filter(m => m.sender === 'user')
+              .map(m => m.text)
+              .join(' ');
             setConversationComplete(true);
-            onSubmit(allUserMessages);
+            setIsSubmitting(false);
+            onSubmit(previousUserMessages);
             return;
           }
           
@@ -127,9 +137,88 @@ export const ConversationScreen: React.FC<ConversationScreenProps> = ({ scenario
         } else if (scenario.id === 'financial') {
           // Smart follow-up for financial scenario
           const normalizedResponse = response.toLowerCase();
-          if ((normalizedResponse.includes('no') || normalizedResponse.includes('nope')) && 
-              missingKeywords.some(kw => ['compliance', 'regulations', 'policy', 'insider', 'illegal'].includes(kw))) {
-            followUpText = "How come? Why not? I thought you were supposed to help me make money!";
+          const allUserText = allUserMessages.toLowerCase();
+          
+          // Check if response is on-topic
+          const hasYes = normalizedResponse.includes('yes') || normalizedResponse.includes('sure') || 
+                        normalizedResponse.includes('ok') || normalizedResponse.includes('yeah');
+          const hasNo = normalizedResponse.includes('no') || normalizedResponse.includes('nope') || 
+                       normalizedResponse.includes("can't") || normalizedResponse.includes('cannot');
+          const hasFinanceKeywords = normalizedResponse.includes('money') || normalizedResponse.includes('tip') || 
+                                    normalizedResponse.includes('invest') || normalizedResponse.includes('stock') ||
+                                    normalizedResponse.includes('trade') || normalizedResponse.includes('complia') ||
+                                    normalizedResponse.includes('polic') || normalizedResponse.includes('regulat');
+          
+          const isOffTopic = !hasYes && !hasNo && !hasFinanceKeywords && normalizedResponse.length > 5;
+          
+          // Check what compliance concepts have been covered
+          const hasRefusal = allUserText.includes('no') || allUserText.includes('cannot') || 
+                           allUserText.includes('not allowed') || allUserText.includes("can't");
+          const hasCompliance = coveredInConversation.includes('compliance');
+          const hasRegulations = coveredInConversation.includes('regulations');
+          const hasPolicy = coveredInConversation.includes('policy');
+          const hasInsiderInfo = allUserText.includes('insider');
+          const hasLegalEthical = allUserText.includes('legal') || allUserText.includes('ethical') || 
+                                allUserText.includes('sec') || allUserText.includes('illegal');
+          
+          // Determine what's missing
+          const needsComplianceExplanation = hasRefusal && !hasCompliance && !hasRegulations && !hasPolicy;
+          const needsSpecifics = hasRefusal && (hasCompliance || hasRegulations || hasPolicy) && 
+                               !hasInsiderInfo && !hasLegalEthical;
+          
+          // Check if response is already complete 
+          // Complete = has refusal + policy (basic compliance) OR has all three elements
+          const hasCompleteResponse = hasRefusal && hasPolicy;
+          
+          if (isOffTopic) {
+            followUpText = "Am I talking to the right person? I'm lost. Will call back later.";
+            // Mark conversation as complete after off-topic response
+            setTimeout(() => {
+              const confusedMessage: Message = {
+                id: (Date.now() + 1).toString(),
+                text: followUpText,
+                sender: 'character'
+              };
+              setMessages(prev => [...prev, confusedMessage]);
+              setConversationComplete(true);
+              setIsSubmitting(false);
+              // Submit with a special marker for off-topic
+              setTimeout(() => onSubmit(allUserMessages + " [OFF_TOPIC]"), 1000);
+            }, 500);
+            return;
+          } else if (hasCompleteResponse) {
+            // Response is complete, end conversation successfully
+            setConversationComplete(true);
+            setIsSubmitting(false);
+            onSubmit(allUserMessages);
+            return;
+          } else if (followUpAttempts.forceEnd) {
+            // This is a confirmation response after "Are you sure?", end conversation
+            // Don't include the confirmation response in the evaluation
+            const previousUserMessages = messages
+              .filter(m => m.sender === 'user')
+              .map(m => m.text)
+              .join(' ');
+            setConversationComplete(true);
+            setIsSubmitting(false);
+            onSubmit(previousUserMessages);
+            return;
+          } else {
+            // Response is incomplete, determine what follow-up is needed
+            const financialAttempts = followUpAttempts.financial || 0;
+            
+            // Check if this is a retry and still incomplete
+            if (lastFollowUpQuestion && financialAttempts >= 1) {
+              followUpText = "Are you sure that's your final answer? Think about compliance requirements.";
+              // Mark that next response should end conversation
+              setFollowUpAttempts(prev => ({ ...prev, forceEnd: true }));
+            } else if (needsComplianceExplanation) {
+              followUpText = "How come? Why not? I thought you were supposed to help me make money!";
+              setFollowUpAttempts(prev => ({ ...prev, financial: financialAttempts + 1 }));
+            } else if (needsSpecifics) {
+              followUpText = "But what specific regulations prevent you from giving me tips? I don't understand.";
+              setFollowUpAttempts(prev => ({ ...prev, financial: financialAttempts + 1 }));
+            }
           }
         }
         
@@ -149,6 +238,7 @@ export const ConversationScreen: React.FC<ConversationScreenProps> = ({ scenario
         } else {
           // No appropriate follow-up, complete the conversation
           setConversationComplete(true);
+          setIsSubmitting(false);
           onSubmit(allUserMessages);
         }
       } else {
@@ -159,6 +249,7 @@ export const ConversationScreen: React.FC<ConversationScreenProps> = ({ scenario
           .concat(response)
           .join(' ');
         setConversationComplete(true);
+        setIsSubmitting(false);
         onSubmit(allUserResponses);
       }
     }

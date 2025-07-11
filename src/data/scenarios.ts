@@ -57,6 +57,15 @@ export const scenarios: Record<string, Scenario> = {
           forbidden: ['maybe', 'later', 'private', 'secret'],
         },
       },
+      {
+        trigger: ['compliance', 'policy', 'regulations'],
+        question: "But what specific regulations prevent you from giving me tips? I don't understand.",
+        keywords: {
+          required: ['insider', 'SEC', 'illegal'],
+          bonus: ['trading', 'federal', 'prosecution', 'licensed'],
+          forbidden: ['maybe', 'later', 'private'],
+        },
+      },
     ],
     feedback: {
       perfect: 'Excellent! You clearly communicated compliance boundaries while maintaining professionalism.',

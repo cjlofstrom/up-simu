@@ -31,6 +31,25 @@ export class ResponseEvaluator {
       if (keyword === 'Jakob') {
         return normalizedText.includes('jakob') || normalizedText.includes('jacob');
       }
+      // Handle variations for policy
+      if (keyword === 'policy') {
+        return normalizedText.includes('policy') || normalizedText.includes('policies');
+      }
+      // Handle "cannot" variations
+      if (keyword === 'cannot') {
+        return normalizedText.includes('cannot') || normalizedText.includes('can\'t') || 
+               normalizedText.includes('can not') || normalizedText.includes('unable');
+      }
+      // Handle "not allowed" variations
+      if (keyword === 'not allowed') {
+        return normalizedText.includes('not allowed') || normalizedText.includes('not permitted') || 
+               normalizedText.includes('against') || normalizedText.includes('prohibited');
+      }
+      // Handle "insider trading" as a phrase
+      if (keyword === 'insider trading') {
+        return normalizedText.includes('insider trading') || 
+               (normalizedText.includes('insider') && normalizedText.includes('trad'));
+      }
       return normalizedText.includes(normalizedKeyword);
     });
   }
@@ -62,9 +81,34 @@ export class ResponseEvaluator {
   evaluate(userResponse: string, scenario: Scenario): EvaluationResult {
     const { keywords } = scenario;
     
+    // Check for off-topic marker
+    const isOffTopic = userResponse.includes('[OFF_TOPIC]');
+    if (isOffTopic && scenario.id === 'financial') {
+      return {
+        stars: 0,
+        feedback: 'You seem confused about the topic. Remember to stay focused on the question asked.',
+        detailedFeedback: {
+          requiredKeywordsFound: [],
+          bonusKeywordsFound: [],
+          forbiddenKeywordsFound: [],
+          missingRequiredKeywords: keywords.required,
+          specificHints: ['The client asked about insider tips. You need to address this directly.'],
+        },
+      };
+    }
+    
     const requiredKeywordsFound = this.findKeywords(userResponse, keywords.required);
     const bonusKeywordsFound = this.findKeywords(userResponse, keywords.bonus);
     const forbiddenKeywordsFound = this.findKeywords(userResponse, keywords.forbidden);
+    
+    // Debug logging for financial scenario
+    if (scenario.id === 'financial') {
+      console.log('Financial scenario evaluation:', {
+        userResponse: userResponse.substring(0, 100),
+        requiredKeywordsFound,
+        keywords: keywords.required
+      });
+    }
     
     const missingRequiredKeywords = keywords.required.filter(
       keyword => !requiredKeywordsFound.includes(keyword)
@@ -113,7 +157,19 @@ export class ResponseEvaluator {
       }
     }
 
-    const hasForbiddenWords = forbiddenKeywordsFound.length > 0;
+    // Special case: in financial scenario, if they use "tips" in a refusal context, don't count it as forbidden
+    const isFinancialScenario = scenario.id === 'financial';
+    let effectiveForbiddenWords = forbiddenKeywordsFound;
+    if (isFinancialScenario && forbiddenKeywordsFound.includes('tips')) {
+      const normalizedResponse = this.normalizeText(userResponse);
+      // Check if "tips" is used in a refusal context
+      if (normalizedResponse.includes('cannot') || normalizedResponse.includes('can\'t') || 
+          normalizedResponse.includes('not') || normalizedResponse.includes('no')) {
+        effectiveForbiddenWords = forbiddenKeywordsFound.filter(word => word !== 'tips');
+      }
+    }
+    
+    const hasForbiddenWords = effectiveForbiddenWords.length > 0;
     const bonusPoints = bonusKeywordsFound.length * 0.1;
 
     let stars = 0;
@@ -122,10 +178,26 @@ export class ResponseEvaluator {
 
     // Special case for financial scenario: "no", "nope", or "no thanks" should award at least 1 star
     const normalizedResponse = this.normalizeText(userResponse);
-    const isFinancialScenario = scenario.id === 'financial';
     const hasNoResponse = normalizedResponse.includes('no') || 
                          normalizedResponse.includes('nope') || 
                          normalizedResponse.includes('no thanks');
+    
+    // For financial scenario, check if they have a proper refusal with explanation
+    // A refusal can be either explicit "no" with explanation OR just compliance language indicating refusal
+    const hasFinancialRefusal = isFinancialScenario && 
+                               ((hasNoResponse && 
+                                 (normalizedResponse.includes('polic') || normalizedResponse.includes('complian') || 
+                                  normalizedResponse.includes('regulat') || normalizedResponse.includes('against') ||
+                                  normalizedResponse.includes('illegal') || normalizedResponse.includes('allowed'))) ||
+                                // Also accept compliance refusals without explicit "no"
+                                (normalizedResponse.includes('against') && normalizedResponse.includes('polic')) ||
+                                (normalizedResponse.includes('cannot') && normalizedResponse.includes('polic')) ||
+                                (normalizedResponse.includes('not allowed') && normalizedResponse.includes('polic')));
+    
+    // Special handling for concatenated responses like "nope its against our policies"
+    // This should be treated as a 2-star response with contextual feedback
+    const isSimpleNoFollowedByPolicy = isFinancialScenario && 
+                                      normalizedResponse.match(/^(no|nope)\s+(its?\s+against|against)\s+(our\s+)?polic/);
 
     // Calculate actual number of required keywords found (including close numerical answers)
     const actualRequiredFound = requiredKeywordsFound.length;
@@ -162,6 +234,22 @@ export class ResponseEvaluator {
       }
     }
     
+    // Debug logging for financial scenario
+    if (isFinancialScenario) {
+      console.log('Financial evaluation debug:', {
+        userResponse: userResponse.substring(0, 50),
+        normalizedResponse: normalizedResponse.substring(0, 50),
+        hasNoResponse,
+        hasFinancialRefusal,
+        isSimpleNoFollowedByPolicy,
+        requiredKeywordsFound,
+        bonusKeywordsFound,
+        actualRequiredFound,
+        hasForbiddenWords,
+        forbiddenKeywordsFound
+      });
+    }
+    
     if (hasForbiddenWords && !hasCloseNumericalAnswer) {
       stars = 0;
       feedback = scenario.feedback.poor;
@@ -174,14 +262,76 @@ export class ResponseEvaluator {
       stars = Math.min(3, 2 + Math.floor(bonusPoints * 2));
       feedback = scenario.feedback.good;
       if (stars === 3) feedback = scenario.feedback.perfect;
-    } else if (actualRequiredFound === totalRequired - 1 || (actualRequiredFound >= 2 && totalRequired === 3)) {
-      // 2/3 key points covered = 2 stars
+      
+      // Special case for financial scenario with perfect response
+      if (isFinancialScenario && actualRequiredFound >= 4 && bonusKeywordsFound.length >= 1) {
+        stars = 3;
+        feedback = "You're on the money! Ruth seems irritated but you managed to not give in.";
+      }
+      
+      // Also give 3 stars for responses that have 3+ required keywords and mention insider
+      if (isFinancialScenario && actualRequiredFound >= 3 && 
+          (bonusKeywordsFound.includes('insider') || bonusKeywordsFound.includes('insider trading'))) {
+        stars = 3;
+        feedback = "You're on the money! Ruth seems irritated but you managed to not give in.";
+      }
+      
+      // Give 3 stars for responses that mention insider trading with a proper refusal
+      if (isFinancialScenario && hasFinancialRefusal && 
+          bonusKeywordsFound.includes('insider trading')) {
+        stars = 3;
+        feedback = "You're on the money! Ruth seems irritated but you managed to not give in.";
+      }
+    } else if (actualRequiredFound === totalRequired - 1 || (actualRequiredFound >= 2 && totalRequired === 3) || 
+               (isFinancialScenario && actualRequiredFound >= 2)) {
+      // 2/3 key points covered = 2 stars, or 2+ keywords for financial scenario
       stars = 2;
       feedback = scenario.feedback.good;
-    } else if (actualRequiredFound >= 1 || hasCloseNumericalAnswer) {
-      // At least 1 key point covered = 1 star
-      stars = hasCloseNumericalAnswer ? 0.5 : 1;
-      feedback = scenario.feedback.needsWork;
+      
+      // Check first if this is a 3-star response with insider trading
+      if (isFinancialScenario && hasFinancialRefusal && 
+          bonusKeywordsFound.includes('insider trading')) {
+        stars = 3;
+        feedback = "You're on the money! Ruth seems irritated but you managed to not give in.";
+      }
+      // Special contextual feedback for 2-star financial responses
+      else if (isFinancialScenario && actualRequiredFound === 2) {
+        feedback = "Good start, but you could strengthen your response by mentioning specific regulations or the legal implications of insider trading.";
+      }
+      
+      // Special case for "nope" + "its against our policies" pattern
+      if (isSimpleNoFollowedByPolicy && stars !== 3) {
+        stars = 2;
+        feedback = "Good job! You refused appropriately and mentioned policy. To strengthen your response further, you could mention specific regulations like SEC rules or the legal implications of insider trading.";
+        summaryFeedback = "Great job on compliance awareness and appropriate boundaries!";
+      }
+    } else if (actualRequiredFound >= 1 || hasCloseNumericalAnswer || hasFinancialRefusal) {
+      // At least 1 key point covered = 1 star (or 2 for good financial refusal)
+      if (hasFinancialRefusal && actualRequiredFound >= 1) {
+        stars = 2;
+        feedback = scenario.feedback.good;
+        
+        // Check if this should be upgraded to 3 stars for insider trading
+        if (isFinancialScenario && bonusKeywordsFound.includes('insider trading')) {
+          stars = 3;
+          feedback = "You're on the money! Ruth seems irritated but you managed to not give in.";
+        }
+        
+        // Debug logging
+        console.log('Financial refusal with keywords:', { 
+          hasFinancialRefusal, 
+          actualRequiredFound, 
+          requiredKeywordsFound,
+          bonusKeywordsFound,
+          normalizedResponse: normalizedResponse.substring(0, 100) 
+        });
+      } else if (isSimpleNoFollowedByPolicy) {
+        // Already handled above
+        stars = 2;
+      } else {
+        stars = hasCloseNumericalAnswer ? 0.5 : 1;
+        feedback = scenario.feedback.needsWork;
+      }
     } else if (isFinancialScenario && hasNoResponse) {
       // Award at least 1 star for "no" responses in financial scenario
       stars = 1;
@@ -191,6 +341,11 @@ export class ResponseEvaluator {
       feedback = scenario.feedback.poor;
     }
 
+    // Clear summary feedback if rating is poor (0 stars)
+    if (stars === 0) {
+      summaryFeedback = '';
+    }
+    
     return {
       stars,
       feedback,
@@ -198,7 +353,7 @@ export class ResponseEvaluator {
       detailedFeedback: {
         requiredKeywordsFound,
         bonusKeywordsFound,
-        forbiddenKeywordsFound,
+        forbiddenKeywordsFound: effectiveForbiddenWords,
         missingRequiredKeywords,
         numericalHints: numericalHints.length > 0 ? numericalHints : undefined,
         specificHints: specificHints.length > 0 ? specificHints : undefined,
