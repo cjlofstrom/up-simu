@@ -55,6 +55,12 @@ export const ConversationScreen: React.FC<ConversationScreenProps> = ({ scenario
             <textarea
               value={response}
               onChange={(e) => setResponse(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey && !isSubmitting) {
+                  e.preventDefault();
+                  handleSubmit(e);
+                }
+              }}
               placeholder="Type your response here..."
               className="flex-1 resize-none rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent min-h-[100px] max-h-[200px]"
               disabled={isSubmitting}

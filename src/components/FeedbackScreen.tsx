@@ -1,5 +1,5 @@
 import React from 'react';
-import { Star, AlertCircle, CheckCircle, XCircle } from 'lucide-react';
+import { Star, AlertCircle, CheckCircle, XCircle, StarHalf } from 'lucide-react';
 import type { EvaluationResult } from '../services/evaluator';
 
 interface FeedbackScreenProps {
@@ -16,27 +16,48 @@ export const FeedbackScreen: React.FC<FeedbackScreenProps> = ({
   const { stars, feedback, detailedFeedback } = evaluation;
 
   const renderStars = () => {
-    return [...Array(3)].map((_, i) => (
-      <Star
-        key={i}
-        className={`w-12 h-12 ${
-          i < stars ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'
-        }`}
-      />
-    ));
+    const fullStars = Math.floor(stars);
+    const hasHalfStar = stars % 1 !== 0;
+    
+    return [...Array(3)].map((_, i) => {
+      if (i < fullStars) {
+        return (
+          <Star
+            key={i}
+            className="w-12 h-12 text-yellow-400 fill-yellow-400"
+          />
+        );
+      } else if (i === fullStars && hasHalfStar) {
+        return (
+          <div key={i} className="relative w-12 h-12">
+            <Star className="absolute w-12 h-12 text-gray-300" />
+            <StarHalf className="absolute w-12 h-12 text-yellow-400 fill-yellow-400" />
+          </div>
+        );
+      } else {
+        return (
+          <Star
+            key={i}
+            className="w-12 h-12 text-gray-300"
+          />
+        );
+      }
+    });
   };
 
   const getPerformanceColor = () => {
-    if (stars === 3) return 'text-green-600';
-    if (stars === 2) return 'text-blue-600';
-    if (stars === 1) return 'text-orange-600';
+    if (stars >= 3) return 'text-green-600';
+    if (stars >= 2) return 'text-blue-600';
+    if (stars >= 1) return 'text-orange-600';
+    if (stars >= 0.5) return 'text-amber-600';
     return 'text-red-600';
   };
 
   const getPerformanceText = () => {
-    if (stars === 3) return 'Excellent!';
-    if (stars === 2) return 'Good Job!';
-    if (stars === 1) return 'Getting There';
+    if (stars >= 3) return 'Excellent!';
+    if (stars >= 2) return 'Good Job!';
+    if (stars >= 1) return 'Getting There';
+    if (stars >= 0.5) return 'So Close!';
     return 'Needs Improvement';
   };
 
@@ -102,6 +123,20 @@ export const FeedbackScreen: React.FC<FeedbackScreenProps> = ({
                   <h4 className="font-semibold text-red-900 mb-1">Compliance Issues</h4>
                   <p className="text-red-800 text-sm">
                     Avoid using: {detailedFeedback.forbiddenKeywordsFound.join(', ')}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {detailedFeedback.numericalHints && detailedFeedback.numericalHints.length > 0 && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5" />
+                <div>
+                  <h4 className="font-semibold text-amber-900 mb-1">Helpful Hint</h4>
+                  <p className="text-amber-800 text-sm">
+                    {detailedFeedback.numericalHints.join(' ')}
                   </p>
                 </div>
               </div>
