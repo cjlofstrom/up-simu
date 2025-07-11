@@ -15,7 +15,7 @@ export const FeedbackScreen: React.FC<FeedbackScreenProps> = ({
   onRetry,
   attempts = 1
 }) => {
-  const { stars, feedback, detailedFeedback } = evaluation;
+  const { stars, feedback, summaryFeedback, detailedFeedback } = evaluation;
 
   const renderStars = () => {
     const fullStars = Math.floor(stars);
@@ -72,6 +72,9 @@ export const FeedbackScreen: React.FC<FeedbackScreenProps> = ({
             {getPerformanceText()}
           </h2>
           <p className="text-lg text-gray-700">{feedback}</p>
+          {summaryFeedback && (
+            <p className="text-md text-gray-600 mt-2">{summaryFeedback}</p>
+          )}
         </div>
 
         <div className="space-y-4 mb-8">

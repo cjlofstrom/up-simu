@@ -18,7 +18,8 @@ export const ConversationScreen: React.FC<ConversationScreenProps> = ({ scenario
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [conversationComplete, setConversationComplete] = useState(false);
-  const [coveredKeywords, setCoveredKeywords] = useState<string[]>([]);
+  const [followUpAttempts, setFollowUpAttempts] = useState<Record<string, number>>({});
+  const [lastFollowUpQuestion, setLastFollowUpQuestion] = useState<string>('');
   const scenario = scenarios[scenarioId];
 
   // Initialize with first question
@@ -43,42 +44,113 @@ export const ConversationScreen: React.FC<ConversationScreenProps> = ({ scenario
       };
       setMessages(prev => [...prev, userMessage]);
       
-      // Track which keywords have been covered
-      const normalizedResponse = response.toLowerCase();
-      const newCoveredKeywords = [...coveredKeywords];
+      // Track which keywords have been covered across all messages
+      const allUserMessages = messages
+        .filter(m => m.sender === 'user')
+        .map(m => m.text)
+        .concat(response)
+        .join(' ');
+      const normalizedAllResponses = allUserMessages.toLowerCase();
+      
+      const coveredInConversation: string[] = [];
+      const yearPattern = /\b(19\d{2}|20\d{2})\b/;
+      const hasAttemptedYear = yearPattern.test(allUserMessages);
       
       scenario.keywords.required.forEach(keyword => {
-        if (normalizedResponse.includes(keyword.toLowerCase()) && !newCoveredKeywords.includes(keyword)) {
-          newCoveredKeywords.push(keyword);
+        if (normalizedAllResponses.includes(keyword.toLowerCase()) || 
+            (keyword === 'ÖV4' && (normalizedAllResponses.includes('öv4') || normalizedAllResponses.includes('ov4'))) ||
+            (keyword === 'Jakob' && (normalizedAllResponses.includes('jakob') || normalizedAllResponses.includes('jacob')))) {
+          coveredInConversation.push(keyword);
+        } else if (keyword === '1927' && hasAttemptedYear) {
+          // User attempted to provide a year, don't ask for it again
+          coveredInConversation.push('year_attempted');
         }
       });
       
-      setCoveredKeywords(newCoveredKeywords);
-      
-      // Check if we need a follow-up question
-      const followUp = scenario.followUps?.find(fu => 
-        fu.trigger.some(trigger => 
-          normalizedResponse.includes(trigger.toLowerCase())
-        )
-      );
+      // Find missing keywords
+      const missingKeywords = scenario.keywords.required.filter(kw => !coveredInConversation.includes(kw));
       
       // Determine if we should continue conversation
-      const hasAllRequiredKeywords = scenario.keywords.required.every(kw => 
-        newCoveredKeywords.includes(kw) || normalizedResponse.includes(kw.toLowerCase())
-      );
+      const hasAllRequiredKeywords = missingKeywords.length === 0;
       
-      if (followUp && !conversationComplete && !hasAllRequiredKeywords) {
-        // Add follow-up question
-        setTimeout(() => {
-          const followUpMessage: Message = {
-            id: (Date.now() + 1).toString(),
-            text: followUp.question,
-            sender: 'character'
-          };
-          setMessages(prev => [...prev, followUpMessage]);
-          setResponse('');
-          setIsSubmitting(false);
-        }, 500);
+      if (!conversationComplete && !hasAllRequiredKeywords) {
+        let followUpText = '';
+        
+        if (scenario.id === 'volvo') {
+          // Smart follow-up for Volvo scenario
+          const hasYear = coveredInConversation.includes('1927') || coveredInConversation.includes('year_attempted');
+          const hasModel = coveredInConversation.includes('ÖV4');
+          const hasInspiration = coveredInConversation.includes('Jakob');
+          
+          // Check if we should force end the conversation
+          if (followUpAttempts.forceEnd) {
+            // End conversation after the retry attempt
+            setConversationComplete(true);
+            onSubmit(allUserMessages);
+            return;
+          }
+          
+          // Check if this is a retry for the same question  
+          const currentState = `${hasYear}-${hasModel}-${hasInspiration}`;
+          const attempts = followUpAttempts[currentState] || 0;
+          const isRetry = lastFollowUpQuestion && attempts > 0;
+          
+          // Normal follow-up logic
+          if (!hasYear && (hasModel || hasInspiration)) {
+            followUpText = "Good! But what year did we start production?";
+          } else if (hasYear && !hasModel && !hasInspiration) {
+            followUpText = "Good, you know the year! But what was the model name and who was it nicknamed after?";
+          } else if (hasYear && hasInspiration && !hasModel) {
+            followUpText = "Great! You know the year and inspiration. What was the model name?";
+          } else if (hasYear && hasModel && !hasInspiration) {
+            followUpText = "Excellent! You know the year and model. Who was it nicknamed after?";
+          } else if (!hasYear && !hasModel && hasInspiration) {
+            followUpText = "Good, you know about Jakob! What year did we start production and what was the model name?";
+          } else if (!hasYear && hasModel && !hasInspiration) {
+            followUpText = "Good, you know the model! What year did we start production and who was it nicknamed after?";
+          }
+          
+          if (followUpText) {
+            // Track attempts for this state
+            const newAttempts = followUpAttempts[currentState] || 0;
+            
+            // If this is the second attempt at the same state, show retry message
+            if (lastFollowUpQuestion && newAttempts === 1) {
+              followUpText = "Are you sure you remember that correctly? Have one more go";
+              // Mark that next response should end conversation
+              setFollowUpAttempts(prev => ({ ...prev, forceEnd: true }));
+            } else if (!followUpAttempts.forceEnd) {
+              // First attempt - increment counter
+              setFollowUpAttempts(prev => ({ ...prev, [currentState]: newAttempts + 1 }));
+            }
+          }
+        } else if (scenario.id === 'financial') {
+          // Smart follow-up for financial scenario
+          const normalizedResponse = response.toLowerCase();
+          if ((normalizedResponse.includes('no') || normalizedResponse.includes('nope')) && 
+              missingKeywords.some(kw => ['compliance', 'regulations', 'policy', 'insider', 'illegal'].includes(kw))) {
+            followUpText = "How come? Why not? I thought you were supposed to help me make money!";
+          }
+        }
+        
+        if (followUpText) {
+          // Add follow-up question
+          setLastFollowUpQuestion(followUpText);
+          setTimeout(() => {
+            const followUpMessage: Message = {
+              id: (Date.now() + 1).toString(),
+              text: followUpText,
+              sender: 'character'
+            };
+            setMessages(prev => [...prev, followUpMessage]);
+            setResponse('');
+            setIsSubmitting(false);
+          }, 500);
+        } else {
+          // No appropriate follow-up, complete the conversation
+          setConversationComplete(true);
+          onSubmit(allUserMessages);
+        }
       } else {
         // Conversation complete, evaluate all responses
         const allUserResponses = messages

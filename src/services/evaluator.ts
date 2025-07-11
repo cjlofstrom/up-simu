@@ -3,6 +3,7 @@ import type { Scenario } from '../data/scenarios';
 export interface EvaluationResult {
   stars: number;
   feedback: string;
+  summaryFeedback?: string;
   detailedFeedback: {
     requiredKeywordsFound: string[];
     bonusKeywordsFound: string[];
@@ -25,6 +26,10 @@ export class ResponseEvaluator {
       // Handle special cases for model names with special characters
       if (keyword === 'ÖV4') {
         return normalizedText.includes('öv4') || normalizedText.includes('ov4');
+      }
+      // Handle common misspellings
+      if (keyword === 'Jakob') {
+        return normalizedText.includes('jakob') || normalizedText.includes('jacob');
       }
       return normalizedText.includes(normalizedKeyword);
     });
@@ -90,11 +95,12 @@ export class ResponseEvaluator {
     if (scenario.id === 'volvo') {
       const normalizedResponse = this.normalizeText(userResponse);
       
-      // Check if they mentioned wrong names
+      // Check if they mentioned wrong names (but not common misspellings)
       const wrongNames = ['john', 'james', 'joseph', 'jack', 'johan', 'jonas'];
       const hasWrongName = wrongNames.some(name => normalizedResponse.includes(name));
+      const hasJacobSpelling = normalizedResponse.includes('jacob');
       
-      if (missingRequiredKeywords.includes('Jakob') || hasWrongName) {
+      if (missingRequiredKeywords.includes('Jakob') && !hasJacobSpelling && hasWrongName) {
         specificHints.push('You do really need to look back at the actual car details and inspiration though. Hint: His name was Jakob');
       }
       
@@ -112,6 +118,7 @@ export class ResponseEvaluator {
 
     let stars = 0;
     let feedback = '';
+    let summaryFeedback = '';
 
     // Special case for financial scenario: "no", "nope", or "no thanks" should award at least 1 star
     const normalizedResponse = this.normalizeText(userResponse);
@@ -124,33 +131,57 @@ export class ResponseEvaluator {
     const actualRequiredFound = requiredKeywordsFound.length;
     const totalRequired = keywords.required.length;
     
+    // Generate summary feedback
+    if (actualRequiredFound > 0 || hasCloseNumericalAnswer) {
+      const rightParts: string[] = [];
+      const wrongParts: string[] = [];
+      
+      // What they got right
+      if (scenario.id === 'volvo') {
+        if (requiredKeywordsFound.includes('1927')) rightParts.push('the year');
+        else if (hasCloseNumericalAnswer) wrongParts.push('the year (close but not quite)');
+        
+        if (requiredKeywordsFound.includes('ÖV4')) rightParts.push('the model');
+        else if (missingRequiredKeywords.includes('ÖV4')) wrongParts.push('the model name');
+        
+        if (requiredKeywordsFound.includes('Jakob')) rightParts.push('the inspiration');
+        else if (missingRequiredKeywords.includes('Jakob')) wrongParts.push('who it was named after');
+      } else if (isFinancialScenario) {
+        if (requiredKeywordsFound.some(kw => ['compliance', 'regulations', 'policy'].includes(kw))) {
+          rightParts.push('compliance awareness');
+        }
+        if (requiredKeywordsFound.some(kw => ['cannot', 'not allowed'].includes(kw))) {
+          rightParts.push('appropriate boundaries');
+        }
+      }
+      
+      if (rightParts.length > 0 && wrongParts.length > 0) {
+        summaryFeedback = `You nailed ${rightParts.join(' and ')} but forgot ${wrongParts.join(' and ')}.`;
+      } else if (rightParts.length > 0) {
+        summaryFeedback = `Great job on ${rightParts.join(' and ')}!`;
+      }
+    }
+    
     if (hasForbiddenWords && !hasCloseNumericalAnswer) {
       stars = 0;
       feedback = scenario.feedback.poor;
     } else if (hasCloseNumericalAnswer && forbiddenKeywordsFound.length > 0) {
       // If they have a close numerical answer but used a forbidden keyword (like "1928")
       stars = 0.5; // Half star
-      const allHints = [...numericalHints, ...specificHints];
-      feedback = allHints.length > 0 ? allHints.join(' ') : scenario.feedback.needsWork;
+      feedback = scenario.feedback.needsWork;
     } else if (actualRequiredFound === totalRequired) {
       // All required keywords found
       stars = Math.min(3, 2 + Math.floor(bonusPoints * 2));
-      feedback = stars === 3 ? scenario.feedback.perfect : scenario.feedback.good;
+      feedback = scenario.feedback.good;
+      if (stars === 3) feedback = scenario.feedback.perfect;
     } else if (actualRequiredFound === totalRequired - 1 || (actualRequiredFound >= 2 && totalRequired === 3)) {
       // 2/3 key points covered = 2 stars
       stars = 2;
       feedback = scenario.feedback.good;
-      const allHints = [...numericalHints, ...specificHints];
-      if (allHints.length > 0) {
-        feedback = feedback + ' ' + allHints.join(' ');
-      }
     } else if (actualRequiredFound >= 1 || hasCloseNumericalAnswer) {
       // At least 1 key point covered = 1 star
       stars = hasCloseNumericalAnswer ? 0.5 : 1;
-      const allHints = [...numericalHints, ...specificHints];
-      feedback = allHints.length > 0 
-        ? allHints.join(' ')
-        : scenario.feedback.needsWork;
+      feedback = scenario.feedback.needsWork;
     } else if (isFinancialScenario && hasNoResponse) {
       // Award at least 1 star for "no" responses in financial scenario
       stars = 1;
@@ -163,6 +194,7 @@ export class ResponseEvaluator {
     return {
       stars,
       feedback,
+      summaryFeedback: summaryFeedback || undefined,
       detailedFeedback: {
         requiredKeywordsFound,
         bonusKeywordsFound,
