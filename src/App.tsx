@@ -15,6 +15,7 @@ function App() {
   const [currentScreen, setCurrentScreen] = useState<GameScreen>('progress');
   const [selectedScenarioId, setSelectedScenarioId] = useState<string>('');
   const [evaluation, setEvaluation] = useState<EvaluationResult | null>(null);
+  const [currentAttempts, setCurrentAttempts] = useState<number>(0);
 
   const handleSelectScenario = (scenarioId: string) => {
     setSelectedScenarioId(scenarioId);
@@ -22,6 +23,8 @@ function App() {
   };
 
   const handleStartScenario = () => {
+    const progress = gameState.getScenarioProgress(selectedScenarioId);
+    setCurrentAttempts(progress?.attempts || 0);
     setCurrentScreen('conversation');
   };
 
@@ -97,6 +100,7 @@ function App() {
           evaluation={evaluation}
           onContinue={handleContinue}
           onRetry={handleRetry}
+          attempts={currentAttempts + 1}
         />
       ) : null;
     

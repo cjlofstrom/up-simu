@@ -1,17 +1,19 @@
 import React from 'react';
-import { Star, AlertCircle, CheckCircle, XCircle, StarHalf } from 'lucide-react';
+import { Star, AlertCircle, CheckCircle, StarHalf } from 'lucide-react';
 import type { EvaluationResult } from '../services/evaluator';
 
 interface FeedbackScreenProps {
   evaluation: EvaluationResult;
   onContinue: () => void;
   onRetry: () => void;
+  attempts?: number;
 }
 
 export const FeedbackScreen: React.FC<FeedbackScreenProps> = ({ 
   evaluation, 
   onContinue, 
-  onRetry 
+  onRetry,
+  attempts = 1
 }) => {
   const { stars, feedback, detailedFeedback } = evaluation;
 
@@ -55,7 +57,7 @@ export const FeedbackScreen: React.FC<FeedbackScreenProps> = ({
 
   const getPerformanceText = () => {
     if (stars >= 3) return 'Excellent!';
-    if (stars >= 2) return 'Good Job!';
+    if (stars >= 2) return 'Pretty Good!';
     if (stars >= 1) return 'Getting There';
     if (stars >= 0.5) return 'So Close!';
     return 'Needs Improvement';
@@ -101,7 +103,7 @@ export const FeedbackScreen: React.FC<FeedbackScreenProps> = ({
             </div>
           )}
 
-          {detailedFeedback.missingRequiredKeywords.length > 0 && (
+          {detailedFeedback.missingRequiredKeywords.length > 0 && attempts >= 3 && (
             <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
               <div className="flex items-start gap-3">
                 <AlertCircle className="w-5 h-5 text-orange-600 mt-0.5" />
@@ -109,20 +111,6 @@ export const FeedbackScreen: React.FC<FeedbackScreenProps> = ({
                   <h4 className="font-semibold text-orange-900 mb-1">Missing Key Points</h4>
                   <p className="text-orange-800 text-sm">
                     Consider mentioning: {detailedFeedback.missingRequiredKeywords.join(', ')}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {detailedFeedback.forbiddenKeywordsFound.length > 0 && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-              <div className="flex items-start gap-3">
-                <XCircle className="w-5 h-5 text-red-600 mt-0.5" />
-                <div>
-                  <h4 className="font-semibold text-red-900 mb-1">Compliance Issues</h4>
-                  <p className="text-red-800 text-sm">
-                    Avoid using: {detailedFeedback.forbiddenKeywordsFound.join(', ')}
                   </p>
                 </div>
               </div>
@@ -137,6 +125,20 @@ export const FeedbackScreen: React.FC<FeedbackScreenProps> = ({
                   <h4 className="font-semibold text-amber-900 mb-1">Helpful Hint</h4>
                   <p className="text-amber-800 text-sm">
                     {detailedFeedback.numericalHints.join(' ')}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {detailedFeedback.specificHints && detailedFeedback.specificHints.length > 0 && (
+            <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-purple-600 mt-0.5" />
+                <div>
+                  <h4 className="font-semibold text-purple-900 mb-1">Additional Hints</h4>
+                  <p className="text-purple-800 text-sm">
+                    {detailedFeedback.specificHints.join(' ')}
                   </p>
                 </div>
               </div>

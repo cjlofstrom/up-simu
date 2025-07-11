@@ -10,6 +10,12 @@ export interface Character {
   avatar?: string;
 }
 
+export interface FollowUpQuestion {
+  trigger: string[]; // Keywords that trigger this follow-up
+  question: string;
+  keywords: Keywords;
+}
+
 export interface Scenario {
   id: string;
   title: string;
@@ -17,6 +23,7 @@ export interface Scenario {
   character: Character;
   question: string;
   keywords: Keywords;
+  followUps?: FollowUpQuestion[];
   feedback: {
     perfect: string;
     good: string;
@@ -40,6 +47,17 @@ export const scenarios: Record<string, Scenario> = {
       bonus: ['SEC', 'insider trading', 'legal', 'ethical', 'professional'],
       forbidden: ['sure', 'yes', 'tips', 'secret', 'profit'],
     },
+    followUps: [
+      {
+        trigger: ['no', 'nope', 'sorry', 'cannot'],
+        question: "How come? Why not? I thought you were supposed to help me make money!",
+        keywords: {
+          required: ['compliance', 'regulations', 'insider', 'illegal', 'policy'],
+          bonus: ['SEC', 'trading', 'ethical', 'professional', 'licensed'],
+          forbidden: ['maybe', 'later', 'private', 'secret'],
+        },
+      },
+    ],
     feedback: {
       perfect: 'Excellent! You clearly communicated compliance boundaries while maintaining professionalism.',
       good: 'Good response. You addressed the compliance concerns appropriately.',
@@ -61,9 +79,29 @@ export const scenarios: Record<string, Scenario> = {
       bonus: ['April', 'Gothenburg', 'safety', 'Swedish'],
       forbidden: ['1928', '1926', 'ÖV3', 'ÖV5', 'Ford'],
     },
+    followUps: [
+      {
+        trigger: ['1927', '1928', '1926'],
+        question: "Good, you know the year! But what was the model name and who was it nicknamed after?",
+        keywords: {
+          required: ['ÖV4', 'Jakob'],
+          bonus: ['open', 'touring', 'four-cylinder'],
+          forbidden: ['ÖV3', 'ÖV5'],
+        },
+      },
+      {
+        trigger: ['ÖV4', 'Jakob'],
+        question: "Excellent! You know about Jakob. What year did we start production?",
+        keywords: {
+          required: ['1927'],
+          bonus: ['April', '14th', 'Gothenburg'],
+          forbidden: ['1928', '1926'],
+        },
+      },
+    ],
     feedback: {
       perfect: 'Outstanding! You demonstrated comprehensive knowledge of Volvo\'s history.',
-      good: 'Good job! You covered the key historical facts accurately.',
+      good: 'Pretty good! You covered the key historical facts.',
       needsWork: 'Your response is missing some important historical details.',
       poor: 'There are inaccuracies in your response. Review Volvo\'s founding history.',
     },
