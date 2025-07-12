@@ -6,9 +6,10 @@ import type { ScenarioContent } from '../types/scenario';
 interface CallScreenProps {
   scenario: ScenarioContent;
   onAnswer: () => void;
+  onBackToMap?: () => void;
 }
 
-export const CallScreen: React.FC<CallScreenProps> = ({ scenario, onAnswer }) => {
+export const CallScreen: React.FC<CallScreenProps> = ({ scenario, onAnswer, onBackToMap }) => {
   const totalStars = gameState.getTotalStars();
   
   return (
@@ -23,7 +24,10 @@ export const CallScreen: React.FC<CallScreenProps> = ({ scenario, onAnswer }) =>
       <div className="w-full max-w-md">
         {/* Header */}
         <div className="text-center mb-12">
-          <div className="flex items-center justify-center gap-3 text-white mb-4">
+          <div 
+            className="flex items-center justify-center gap-3 text-white mb-4 cursor-pointer hover:opacity-80 transition-opacity"
+            onClick={onBackToMap}
+          >
             <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center">
               <span className="text-2xl">👥</span>
             </div>

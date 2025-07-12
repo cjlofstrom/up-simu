@@ -109,6 +109,10 @@ function App() {
     }
   };
 
+  const handleBackToMap = () => {
+    setCurrentScreen('map');
+  };
+
 
   // Check if user has any progress
   const state = gameState.getState();
@@ -149,6 +153,7 @@ function App() {
           scenario={currentScenarioContent}
           checkpointNumber={currentCheckpoint}
           onStart={handleStartScenario}
+          onBackToMap={handleBackToMap}
         />
       ) : null;
     
@@ -157,6 +162,7 @@ function App() {
         <CallScreen
           scenario={currentScenarioContent}
           onAnswer={handleAnswerCall}
+          onBackToMap={handleBackToMap}
         />
       ) : null;
     
@@ -165,6 +171,7 @@ function App() {
         <ConversationScreen 
           scenario={currentScenarioContent}
           onSubmit={handleSubmitResponse}
+          onBackToMap={handleBackToMap}
         />
       ) : null;
     
@@ -172,6 +179,7 @@ function App() {
       return currentScenarioContent ? (
         <ProcessingScreen
           scenario={currentScenarioContent}
+          onBackToMap={handleBackToMap}
         />
       ) : null;
     

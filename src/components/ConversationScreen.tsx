@@ -17,11 +17,13 @@ interface Message {
 interface ConversationScreenProps {
   scenario: ScenarioContent;
   onSubmit: (response: string) => void;
+  onBackToMap?: () => void;
 }
 
 export const ConversationScreen: React.FC<ConversationScreenProps> = ({
   scenario,
   onSubmit,
+  onBackToMap
 }) => {
   const [response, setResponse] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -567,7 +569,10 @@ export const ConversationScreen: React.FC<ConversationScreenProps> = ({
         {/* Header */}
       <div className="fixed top-0 left-0 right-0 z-10 px-4 py-6">
         <div className="flex justify-between items-center max-w-4xl mx-auto">
-          <div className="flex items-center gap-4 bg-gray-800 text-white px-6 py-3 rounded-full">
+          <div 
+            className="flex items-center gap-4 bg-gray-800 text-white px-6 py-3 rounded-full cursor-pointer hover:bg-gray-700 transition-colors"
+            onClick={onBackToMap}
+          >
             <h1 className="text-xl font-medium">{scenario.title}</h1>
           </div>
 

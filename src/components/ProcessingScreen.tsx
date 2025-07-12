@@ -5,9 +5,10 @@ import type { ScenarioContent } from '../types/scenario';
 
 interface ProcessingScreenProps {
   scenario: ScenarioContent;
+  onBackToMap?: () => void;
 }
 
-export const ProcessingScreen: React.FC<ProcessingScreenProps> = ({ scenario }) => {
+export const ProcessingScreen: React.FC<ProcessingScreenProps> = ({ scenario, onBackToMap }) => {
   const totalStars = gameState.getTotalStars();
   
   // Generate random positions for confetti elements
@@ -25,7 +26,10 @@ export const ProcessingScreen: React.FC<ProcessingScreenProps> = ({ scenario }) 
     <div className="min-h-screen bg-gray-600 flex flex-col items-center justify-center px-4">
       {/* Header */}
       <div className="fixed top-8 left-0 right-0 flex justify-between px-8">
-        <div className="flex items-center gap-4 bg-gray-800 text-white px-6 py-3 rounded-full">
+        <div 
+          className="flex items-center gap-4 bg-gray-800 text-white px-6 py-3 rounded-full cursor-pointer hover:bg-gray-700 transition-colors"
+          onClick={onBackToMap}
+        >
           <h1 className="text-xl font-medium">{scenario.title}</h1>
         </div>
         
