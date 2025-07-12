@@ -44,24 +44,36 @@ export const MapScreen: React.FC<MapScreenProps> = ({
   // Get current checkpoint to show
   const activeCheckpoint = checkpoints.find(cp => cp.id === currentCheckpoint);
 
-  // Update player position when returning to map
+  // Update player position and camera when returning to map
   useEffect(() => {
     if (currentCheckpoint === 2) {
       // Player at first checkpoint when showing second
       setPlayerPosition({ x: 400, y: 400 });
+      updateViewBox(400, 400);
     } else if (currentCheckpoint === 1) {
       // Check if we should be at checkpoint or start
       const checkpoint = checkpoints.find(cp => cp.id === 1);
       if (shouldBounce && checkpoint) {
         // Player stays at checkpoint and bounces
         setPlayerPosition({ x: checkpoint.x, y: checkpoint.y });
+        updateViewBox(checkpoint.x, checkpoint.y);
         performBounce();
       } else {
         // Player at start when showing first checkpoint fresh
         setPlayerPosition({ x: 100, y: 500 });
+        updateViewBox(100, 500);
       }
     }
   }, [currentCheckpoint, shouldBounce]);
+  
+  const updateViewBox = (centerX: number, centerY: number) => {
+    // Center the view on the given position
+    const viewWidth = 800;
+    const viewHeight = 600;
+    const x = Math.max(0, centerX - viewWidth / 2);
+    const y = Math.max(0, centerY - viewHeight / 2);
+    setViewBox(`${x} ${y} ${viewWidth} ${viewHeight}`);
+  };
   
   const performBounce = () => {
     setIsBouncing(true);
@@ -134,6 +146,7 @@ export const MapScreen: React.FC<MapScreenProps> = ({
         }
         
         setPlayerPosition(newPosition);
+        updateViewBox(newPosition.x, newPosition.y);
         
         if (progress < 1) {
           requestAnimationFrame(animate);
@@ -170,7 +183,7 @@ export const MapScreen: React.FC<MapScreenProps> = ({
       </div>
 
       {/* Map SVG */}
-      <svg className="absolute inset-0 w-full h-full">
+      <svg className="absolute inset-0 w-full h-full" viewBox={viewBox}>
         
         {/* Path */}
         <path
@@ -241,7 +254,7 @@ export const MapScreen: React.FC<MapScreenProps> = ({
                 height="60"
                 rx="8"
                 fill={isCompleted ? "#10b981" : isActive ? "#10b981" : "#9ca3af"}
-                className={isActive ? "cursor-pointer" : ""}
+                className={`${isActive ? "cursor-pointer" : ""} ${isActive && shouldBounce ? "animate-pulse-size" : ""}`}
                 onClick={isActive ? handleCheckpointClick : undefined}
               />
               
@@ -286,6 +299,21 @@ export const MapScreen: React.FC<MapScreenProps> = ({
         
         .animate-bounce {
           animation: bounce 0.5s ease-in-out infinite;
+        }
+        
+        @keyframes pulse-size {
+          0%, 100% {
+            transform: scale(1);
+          }
+          50% {
+            transform: scale(1.2);
+          }
+        }
+        
+        .animate-pulse-size {
+          animation: pulse-size 1s ease-in-out infinite;
+          transform-origin: center;
+          transform-box: fill-box;
         }
       `}</style>
     </div>
