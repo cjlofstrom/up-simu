@@ -1,15 +1,15 @@
 import React from 'react';
 import { Star } from 'lucide-react';
-import { scenarios } from '../data/scenarios';
 import { gameState } from '../services/gameState';
+import type { ScenarioContent } from '../types/scenario';
 
 interface IntroScreenProps {
-  scenarioId: string;
+  scenario: ScenarioContent;
+  checkpointNumber: number;
   onStart: () => void;
 }
 
-export const IntroScreen: React.FC<IntroScreenProps> = ({ scenarioId, onStart }) => {
-  const scenario = scenarios[scenarioId];
+export const IntroScreen: React.FC<IntroScreenProps> = ({ scenario, onStart }) => {
   const totalStars = gameState.getTotalStars();
 
   return (
@@ -35,7 +35,7 @@ export const IntroScreen: React.FC<IntroScreenProps> = ({ scenarioId, onStart })
           </div>
           <div className="bg-white rounded-3xl rounded-bl-lg px-6 py-4 shadow-xl">
             <p className="text-lg">
-              Now it's time to get real with <span className="font-bold">{scenario.title}</span>. It's 10am at the office.
+              {scenario.conversationIntro || `Now it's time to get real with ${scenario.title}. It's 10am at the office.`}
             </p>
             <p className="text-lg mt-2">
               Choose your words carefully to demonstrate your knowledge and professionalism

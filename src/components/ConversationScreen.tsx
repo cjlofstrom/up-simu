@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Send, User, Star, Mic } from "lucide-react";
-import { scenarios } from "../data/scenarios";
 import { ThinkingIndicator } from "./ThinkingIndicator";
 import { SendingIndicator } from "./SendingIndicator";
 import { SpeakAgainButton } from "./SpeakAgainButton";
 import { gameState } from "../services/gameState";
 import { ListeningOverlay } from "./ListeningOverlay";
 import { useSpeechRecognition } from "../hooks/useSpeechRecognition";
+import type { ScenarioContent } from '../types/scenario';
 
 interface Message {
   id: string;
@@ -15,12 +15,12 @@ interface Message {
 }
 
 interface ConversationScreenProps {
-  scenarioId: string;
+  scenario: ScenarioContent;
   onSubmit: (response: string) => void;
 }
 
 export const ConversationScreen: React.FC<ConversationScreenProps> = ({
-  scenarioId,
+  scenario,
   onSubmit,
 }) => {
   const [response, setResponse] = useState("");
@@ -28,7 +28,7 @@ export const ConversationScreen: React.FC<ConversationScreenProps> = ({
   const [messages, setMessages] = useState<Message[]>([]);
   const [conversationComplete, setConversationComplete] = useState(false);
   const [followUpAttempts, setFollowUpAttempts] = useState<
-    Record<string, number>
+    Record<string, number | boolean>
   >({});
   const [lastFollowUpQuestion, setLastFollowUpQuestion] = useState<string>("");
   const [showThinking, setShowThinking] = useState(false);
@@ -38,7 +38,6 @@ export const ConversationScreen: React.FC<ConversationScreenProps> = ({
   const [wasVoiceInput, setWasVoiceInput] = useState(false);
   const [voiceRetryCount, setVoiceRetryCount] = useState(0);
   const [showSpeakAgain, setShowSpeakAgain] = useState(false);
-  const scenario = scenarios[scenarioId];
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Get total stars
@@ -69,11 +68,11 @@ export const ConversationScreen: React.FC<ConversationScreenProps> = ({
     setMessages([
       {
         id: "1",
-        text: scenario.question,
+        text: scenario.questions[0],
         sender: "character",
       },
     ]);
-  }, [scenario.question]);
+  }, [scenario.questions]);
 
   // Auto-send voice input after 1.5s
   useEffect(() => {
@@ -170,7 +169,7 @@ export const ConversationScreen: React.FC<ConversationScreenProps> = ({
       const yearPattern = /\b(19\d{2}|20\d{2})\b/;
       const hasAttemptedYear = yearPattern.test(allUserMessages);
 
-      scenario.keywords.required.forEach((keyword) => {
+      scenario.requiredKeywords.forEach((keyword) => {
         const keywordLower = keyword.toLowerCase();
         if (
           normalizedAllResponses.includes(keywordLower) ||
@@ -199,7 +198,7 @@ export const ConversationScreen: React.FC<ConversationScreenProps> = ({
       });
 
       // Find missing keywords
-      const missingKeywords = scenario.keywords.required.filter(
+      const missingKeywords = scenario.requiredKeywords.filter(
         (kw) => !coveredInConversation.includes(kw),
       );
 
@@ -219,7 +218,7 @@ export const ConversationScreen: React.FC<ConversationScreenProps> = ({
           const hasInspiration = coveredInConversation.includes("Jakob");
 
           // Check if we should force end the conversation
-          if (followUpAttempts.forceEnd) {
+          if (followUpAttempts.forceEnd === true) {
             // End conversation after the retry attempt
             // Don't include the confirmation response in the evaluation
             const previousUserMessages = messages
@@ -237,8 +236,9 @@ export const ConversationScreen: React.FC<ConversationScreenProps> = ({
 
           // Check if this is a retry for the same question
           const currentState = `${hasYear}-${hasModel}-${hasInspiration}`;
-          const attempts = followUpAttempts[currentState] || 0;
-          const isRetry = lastFollowUpQuestion && attempts > 0;
+          // const stateValue = followUpAttempts[currentState];
+          // const attempts = typeof stateValue === 'number' ? stateValue : 0;
+          // const isRetry = lastFollowUpQuestion && attempts > 0;
 
           // Normal follow-up logic with contextual responses
           if (!hasYear && (hasModel || hasInspiration)) {
@@ -273,7 +273,8 @@ export const ConversationScreen: React.FC<ConversationScreenProps> = ({
           
           if (followUpText || isVagueResponse) {
             // Track attempts for this state
-            const newAttempts = followUpAttempts[currentState] || 0;
+            const stateValue = followUpAttempts[currentState];
+            const newAttempts = typeof stateValue === 'number' ? stateValue : 0;
 
             // If this is a vague response after we've already asked, show simpler retry
             if (isVagueResponse && newAttempts >= 1) {
@@ -432,7 +433,7 @@ export const ConversationScreen: React.FC<ConversationScreenProps> = ({
               onSubmit(allUserMessages);
             }, 2000);
             return;
-          } else if (followUpAttempts.forceEnd) {
+          } else if (followUpAttempts.forceEnd === true) {
             // This is a confirmation response after "Are you sure?", end conversation
             // Don't include the confirmation response in the evaluation
             const previousUserMessages = messages
@@ -448,7 +449,8 @@ export const ConversationScreen: React.FC<ConversationScreenProps> = ({
             return;
           } else {
             // Response is incomplete, determine what follow-up is needed
-            const financialAttempts = followUpAttempts.financial || 0;
+            const financialValue = followUpAttempts.financial;
+            const financialAttempts = typeof financialValue === 'number' ? financialValue : 0;
 
             // Check if this is a vague/unhelpful response like "I don't know"
             const isVagueResponse = normalizedResponse.includes("dont know") || 

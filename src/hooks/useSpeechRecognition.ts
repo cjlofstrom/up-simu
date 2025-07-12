@@ -14,7 +14,7 @@ export const useSpeechRecognition = ({
   const [transcript, setTranscript] = useState('');
   
   const recognitionRef = useRef<any>(null);
-  const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastTranscriptRef = useRef<string>('');
 
   const startListening = useCallback(() => {

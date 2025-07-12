@@ -6,7 +6,7 @@ interface ListeningOverlayProps {
   onClose: () => void;
 }
 
-export const ListeningOverlay: React.FC<ListeningOverlayProps> = ({ scenarioTitle, onClose }) => {
+export const ListeningOverlay: React.FC<ListeningOverlayProps> = ({ scenarioTitle }) => {
   return (
     <div className="fixed inset-0 bg-gray-600 z-50 flex flex-col">
       {/* Header */}

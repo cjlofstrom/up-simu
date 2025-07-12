@@ -1,4 +1,4 @@
-import type { Scenario } from '../data/scenarios';
+import type { ScenarioContent } from '../types/scenario';
 
 export interface EvaluationResult {
   stars: number;
@@ -122,8 +122,13 @@ export class ResponseEvaluator {
     return { isClose: false };
   }
 
-  evaluate(userResponse: string, scenario: Scenario): EvaluationResult {
-    const { keywords } = scenario;
+  evaluate(userResponse: string, scenario: ScenarioContent): EvaluationResult {
+    // For compatibility, create keywords object from ScenarioContent
+    const keywords = {
+      required: scenario.requiredKeywords,
+      bonus: [],
+      forbidden: []
+    };
     
     // Check for off-topic marker
     const isOffTopic = userResponse.includes('[OFF_TOPIC]');
@@ -318,16 +323,16 @@ export class ResponseEvaluator {
     
     if (effectiveForbiddenCount > 0 && !hasCloseNumericalAnswer) {
       stars = 0;
-      feedback = scenario.feedback.poor;
+      feedback = scenario.feedback.needsImprovement;
     } else if (hasCloseNumericalAnswer && effectiveForbiddenCount > 0) {
       // Has close year but also non-year forbidden words
       stars = 0.5;
-      feedback = scenario.feedback.needsWork;
+      feedback = scenario.feedback.needsImprovement;
     } else if (actualRequiredFound === totalRequired) {
       // All required keywords found
       stars = Math.min(3, 2 + Math.floor(bonusPoints * 2));
       feedback = scenario.feedback.good;
-      if (stars === 3) feedback = scenario.feedback.perfect;
+      if (stars === 3) feedback = scenario.feedback.excellent;
       
       // Special case for financial scenario with perfect response
       if (isFinancialScenario && actualRequiredFound >= 4 && bonusKeywordsFound.length >= 1) {
@@ -409,7 +414,7 @@ export class ResponseEvaluator {
           });
         }
         stars = 1.5;
-        feedback = scenario.feedback.needsWork;
+        feedback = scenario.feedback.needsImprovement;
       } else {
         // Log why we're in this branch
         if (scenario.id === 'volvo') {
@@ -420,15 +425,15 @@ export class ResponseEvaluator {
           });
         }
         stars = hasCloseNumericalAnswer ? 0.5 : 1;
-        feedback = scenario.feedback.needsWork;
+        feedback = scenario.feedback.needsImprovement;
       }
     } else if (isFinancialScenario && hasNoResponse) {
       // Award at least 1 star for "no" responses in financial scenario
       stars = 1;
-      feedback = scenario.feedback.needsWork;
+      feedback = scenario.feedback.needsImprovement;
     } else {
       stars = 0;
-      feedback = scenario.feedback.poor;
+      feedback = scenario.feedback.needsImprovement;
     }
 
     // Clear summary feedback if rating is poor (0 stars) or if we have specific 3-star feedback

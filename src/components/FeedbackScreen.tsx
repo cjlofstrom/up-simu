@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Star, AlertCircle, CheckCircle, StarHalf } from 'lucide-react';
+import { Star, StarHalf } from 'lucide-react';
 import type { EvaluationResult } from '../services/evaluator';
-import { scenarios } from '../data/scenarios';
 import { gameState } from '../services/gameState';
+import type { ScenarioContent } from '../types/scenario';
 
 interface FeedbackScreenProps {
   evaluation: EvaluationResult;
   scenarioId: string;
+  scenario: ScenarioContent;
   onContinue: () => void;
   onRetry: () => void;
   attempts?: number;
@@ -14,13 +15,12 @@ interface FeedbackScreenProps {
 
 export const FeedbackScreen: React.FC<FeedbackScreenProps> = ({ 
   evaluation,
-  scenarioId, 
+  scenarioId,
+  scenario,
   onContinue, 
-  onRetry,
-  attempts = 1
+  onRetry
 }) => {
-  const { stars, feedback, summaryFeedback, detailedFeedback } = evaluation;
-  const scenario = scenarios[scenarioId];
+  const { stars, feedback, summaryFeedback } = evaluation;
   
   // Get the base total stars (before adding current scenario stars)
   const baseTotalStars = gameState.getTotalStars();

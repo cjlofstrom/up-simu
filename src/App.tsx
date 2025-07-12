@@ -6,22 +6,33 @@ import { ConversationScreen } from './components/ConversationScreen';
 import { ProcessingScreen } from './components/ProcessingScreen';
 import { FeedbackScreen } from './components/FeedbackScreen';
 import { ProgressScreen } from './components/ProgressScreen';
+import { MapScreen } from './components/MapScreen';
 import { evaluator } from './services/evaluator';
 import type { EvaluationResult } from './services/evaluator';
 import { gameState } from './services/gameState';
-import { scenarios } from './data/scenarios';
+import { scenarioService } from './services/scenarioService';
+import type { ScenarioContent } from './types/scenario';
+import map1Image from '/map1.png';
+import map2Image from '/map2.png';
+import playerAvatar from '/player.svg';
 
-type GameScreen = 'progress' | 'selection' | 'intro' | 'call' | 'conversation' | 'processing' | 'feedback';
+type GameScreen = 'progress' | 'selection' | 'map' | 'intro' | 'call' | 'conversation' | 'processing' | 'feedback';
 
 function App() {
   const [currentScreen, setCurrentScreen] = useState<GameScreen>('progress');
   const [selectedScenarioId, setSelectedScenarioId] = useState<string>('');
   const [evaluation, setEvaluation] = useState<EvaluationResult | null>(null);
   const [currentAttempts, setCurrentAttempts] = useState<number>(0);
+  const [currentCheckpoint, setCurrentCheckpoint] = useState<number>(1);
+  const [currentScenarioContent, setCurrentScenarioContent] = useState<ScenarioContent | null>(null);
+  const maxCheckpoints = 2; // Only 2 checkpoints as requested
 
   const handleSelectScenario = (scenarioId: string) => {
     setSelectedScenarioId(scenarioId);
-    setCurrentScreen('intro');
+    setCurrentCheckpoint(1);
+    const content = scenarioService.getScenarioForCheckpoint(scenarioId, 1);
+    setCurrentScenarioContent(content);
+    setCurrentScreen('map');
   };
 
   const handleStartScenario = () => {
@@ -31,8 +42,8 @@ function App() {
   };
 
   const handleSubmitResponse = (response: string) => {
-    const scenario = scenarios[selectedScenarioId];
-    const result = evaluator.evaluate(response, scenario);
+    if (!currentScenarioContent) return;
+    const result = evaluator.evaluate(response, currentScenarioContent);
     setEvaluation(result);
     
     // Don't update game state here - it will be updated after animation in FeedbackScreen
@@ -47,9 +58,19 @@ function App() {
   };
 
   const handleContinue = () => {
-    setCurrentScreen('progress');
-    setSelectedScenarioId('');
-    setEvaluation(null);
+    if (currentCheckpoint < maxCheckpoints) {
+      const nextCheckpoint = currentCheckpoint + 1;
+      setCurrentCheckpoint(nextCheckpoint);
+      const content = scenarioService.getScenarioForCheckpoint(selectedScenarioId, nextCheckpoint);
+      setCurrentScenarioContent(content);
+      setCurrentScreen('map');
+    } else {
+      setCurrentScreen('progress');
+      setSelectedScenarioId('');
+      setEvaluation(null);
+      setCurrentCheckpoint(1);
+      setCurrentScenarioContent(null);
+    }
   };
 
   const handleRetry = () => {
@@ -58,6 +79,14 @@ function App() {
   
   const handleAnswerCall = () => {
     setCurrentScreen('conversation');
+  };
+
+  const handleCheckpointClick = (checkpoint: number) => {
+    if (checkpoint === currentCheckpoint) {
+      const content = scenarioService.getScenarioForCheckpoint(selectedScenarioId, checkpoint);
+      setCurrentScenarioContent(content);
+      setCurrentScreen('intro');
+    }
   };
 
   const handleReset = () => {
@@ -89,42 +118,55 @@ function App() {
     case 'selection':
       return <DocumentSelection onSelectScenario={handleSelectScenario} />;
     
+    case 'map':
+      return currentScenarioContent ? (
+        <MapScreen
+          currentCheckpoint={currentCheckpoint}
+          scenario={currentScenarioContent}
+          onCheckpointClick={handleCheckpointClick}
+          mapImage={currentCheckpoint === 1 ? map1Image : map2Image}
+          playerAvatar={playerAvatar}
+        />
+      ) : null;
+    
     case 'intro':
-      return (
+      return currentScenarioContent ? (
         <IntroScreen 
-          scenarioId={selectedScenarioId}
+          scenario={currentScenarioContent}
+          checkpointNumber={currentCheckpoint}
           onStart={handleStartScenario}
         />
-      );
+      ) : null;
     
     case 'call':
-      return (
+      return currentScenarioContent ? (
         <CallScreen
-          scenarioId={selectedScenarioId}
+          scenario={currentScenarioContent}
           onAnswer={handleAnswerCall}
         />
-      );
+      ) : null;
     
     case 'conversation':
-      return (
+      return currentScenarioContent ? (
         <ConversationScreen 
-          scenarioId={selectedScenarioId}
+          scenario={currentScenarioContent}
           onSubmit={handleSubmitResponse}
         />
-      );
+      ) : null;
     
     case 'processing':
-      return (
+      return currentScenarioContent ? (
         <ProcessingScreen
-          scenarioId={selectedScenarioId}
+          scenario={currentScenarioContent}
         />
-      );
+      ) : null;
     
     case 'feedback':
-      return evaluation ? (
+      return evaluation && currentScenarioContent ? (
         <FeedbackScreen 
           evaluation={evaluation}
           scenarioId={selectedScenarioId}
+          scenario={currentScenarioContent}
           onContinue={handleContinue}
           onRetry={handleRetry}
           attempts={currentAttempts + 1}

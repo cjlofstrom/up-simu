@@ -1,14 +1,13 @@
 import React from 'react';
 import { Star } from 'lucide-react';
-import { scenarios } from '../data/scenarios';
 import { gameState } from '../services/gameState';
+import type { ScenarioContent } from '../types/scenario';
 
 interface ProcessingScreenProps {
-  scenarioId: string;
+  scenario: ScenarioContent;
 }
 
-export const ProcessingScreen: React.FC<ProcessingScreenProps> = ({ scenarioId }) => {
-  const scenario = scenarios[scenarioId];
+export const ProcessingScreen: React.FC<ProcessingScreenProps> = ({ scenario }) => {
   const totalStars = gameState.getTotalStars();
   
   // Generate random positions for confetti elements

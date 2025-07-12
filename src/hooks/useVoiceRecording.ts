@@ -14,7 +14,7 @@ export const useVoiceRecording = ({
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
-  const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -128,7 +128,7 @@ export const useVoiceRecording = ({
 
       // Convert blob to audio for recognition
       const audioUrl = URL.createObjectURL(audioBlob);
-      const audio = new Audio(audioUrl);
+      // const audio = new Audio(audioUrl);
       
       // For Web Speech API, we need to use the microphone directly
       // So we'll use a simulated transcription for now
