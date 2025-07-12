@@ -39,14 +39,14 @@ export const ConversationScreen: React.FC<ConversationScreenProps> = ({
   // Get total stars
   const totalStars = gameState.getTotalStars();
   
-  // Speech recognition hook with 1.5s silence timeout
+  // Speech recognition hook with 1s silence timeout
   const { isListening, transcript, error: speechError, startListening, stopListening } = useSpeechRecognition({
     onTranscript: (text) => {
       setResponse(text);
       setShowListening(false);
       setPendingVoiceText(text); // Store for auto-send
     },
-    silenceTimeout: 1500 // 1.5 seconds
+    silenceTimeout: 1000 // 1 second
   });
 
   // Initialize with first question
@@ -526,7 +526,7 @@ export const ConversationScreen: React.FC<ConversationScreenProps> = ({
                 }
               }}
               placeholder="Speak or write..."
-              className="w-full px-6 py-5 pr-16 bg-gray-700 text-white placeholder-gray-400 rounded-full text-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-6 py-5 pr-16 bg-gray-700 text-white placeholder-gray-400 rounded-full text-lg ring-1 ring-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               disabled={isSubmitting || conversationComplete}
             />
             <button
@@ -534,7 +534,7 @@ export const ConversationScreen: React.FC<ConversationScreenProps> = ({
               onClick={handleMicrophoneClick}
               disabled={isSubmitting || conversationComplete || isListening}
               className={`absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center transition-colors disabled:opacity-50 ${
-                isListening ? 'text-white bg-blue-500 rounded-full' : 'text-gray-400 hover:text-white'
+                isListening ? 'text-white bg-blue-500 rounded-full' : 'text-white hover:bg-white/10 rounded-full'
               }`}
               aria-label="Voice input"
             >
