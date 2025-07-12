@@ -177,6 +177,7 @@ export const ConversationScreen: React.FC<ConversationScreenProps> = ({
 
         if (scenario.id === "volvo") {
           // Smart follow-up for Volvo scenario
+          const normalizedResponse = responseText.toLowerCase();
           const hasYear =
             coveredInConversation.includes("1927") ||
             coveredInConversation.includes("year_attempted");
@@ -225,17 +226,32 @@ export const ConversationScreen: React.FC<ConversationScreenProps> = ({
               "Good, you know the model! What year did we start production and who was it nicknamed after?";
           }
 
-          if (followUpText) {
+          // Check if this is a vague/unhelpful response
+          const isVagueResponse = normalizedResponse.includes("dont know") || 
+                                normalizedResponse.includes("don't know") ||
+                                normalizedResponse.includes("not sure") ||
+                                normalizedResponse.includes("unsure") ||
+                                normalizedResponse.includes("idk") ||
+                                normalizedResponse.includes("dunno") ||
+                                normalizedResponse.includes("no idea") ||
+                                normalizedResponse.includes("forgot");
+          
+          if (followUpText || isVagueResponse) {
             // Track attempts for this state
             const newAttempts = followUpAttempts[currentState] || 0;
 
+            // If this is a vague response after we've already asked, show simpler retry
+            if (isVagueResponse && newAttempts >= 1) {
+              followUpText = "Hmm, are you sure?";
+              setFollowUpAttempts((prev) => ({ ...prev, forceEnd: true }));
+            }
             // If this is the second attempt at the same state, show retry message
-            if (lastFollowUpQuestion && newAttempts === 1) {
+            else if (lastFollowUpQuestion && newAttempts === 1 && followUpText) {
               followUpText =
                 "Are you sure you remember that correctly? Have one more go";
               // Mark that next response should end conversation
               setFollowUpAttempts((prev) => ({ ...prev, forceEnd: true }));
-            } else if (!followUpAttempts.forceEnd) {
+            } else if (!followUpAttempts.forceEnd && followUpText) {
               // First attempt - increment counter
               setFollowUpAttempts((prev) => ({
                 ...prev,
@@ -375,8 +391,22 @@ export const ConversationScreen: React.FC<ConversationScreenProps> = ({
             // Response is incomplete, determine what follow-up is needed
             const financialAttempts = followUpAttempts.financial || 0;
 
+            // Check if this is a vague/unhelpful response like "I don't know"
+            const isVagueResponse = normalizedResponse.includes("dont know") || 
+                                  normalizedResponse.includes("don't know") ||
+                                  normalizedResponse.includes("not sure") ||
+                                  normalizedResponse.includes("unsure") ||
+                                  normalizedResponse.includes("idk") ||
+                                  normalizedResponse.includes("dunno");
+            
+            // If we've already asked a follow-up and they're still vague, show "Hmm, are you sure?"
+            if (financialAttempts >= 1 && (isVagueResponse || (!hasCompliance && !hasRegulations && !hasPolicy && !hasInsiderInfo))) {
+              followUpText = "Hmm, are you sure?";
+              // Mark that next response should end conversation
+              setFollowUpAttempts((prev) => ({ ...prev, forceEnd: true }));
+            }
             // First check what specific follow-up is needed
-            if (needsComplianceExplanation) {
+            else if (needsComplianceExplanation && financialAttempts === 0) {
               followUpText =
                 "How come? Why not? I thought you were supposed to help me make money!";
               setFollowUpAttempts((prev) => ({
@@ -398,7 +428,7 @@ export const ConversationScreen: React.FC<ConversationScreenProps> = ({
                 financial: financialAttempts + 1,
               }));
             } else if (lastFollowUpQuestion && financialAttempts >= 1) {
-              // Only show "Are you sure?" if we've already asked for specifics and they still haven't provided them
+              // Generic "Are you sure?" for other cases
               followUpText =
                 "Are you sure that's your final answer? Think about compliance requirements.";
               // Mark that next response should end conversation
