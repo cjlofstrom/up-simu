@@ -80,11 +80,11 @@ export const scenarios: Record<string, Scenario> = {
     title: 'Volvo History',
     description: 'Share knowledge about Volvo\'s historical milestones',
     character: {
-      name: 'Gustav Larson',
-      role: 'Co-founder',
+      name: 'Erik Andersson',
+      role: 'Journalist',
       avatar: '👴',
     },
-    question: 'Tell me about the first Volvo car we produced',
+    question: "Hi! I'm writing an article about the origins of Volvo. Can you help me verify some facts? What can you tell me about the very first Volvo car - the year, model, and who it was nicknamed after?",
     keywords: {
       required: ['ÖV4', '1927', 'Jakob'],
       bonus: ['April', 'Gothenburg', 'safety', 'Swedish'],
