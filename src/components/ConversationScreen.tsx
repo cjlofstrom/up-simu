@@ -76,6 +76,17 @@ export const ConversationScreen: React.FC<ConversationScreenProps> = ({
     }
   }, [pendingVoiceText]);
 
+  // Helper function to generate contextual prefix for follow-ups
+  const getContextualPrefix = (isCorrect: boolean, isFirstAttempt: boolean = true): string => {
+    if (isCorrect) {
+      return isFirstAttempt ? "Good!" : "Great!";
+    } else {
+      // For incorrect/partial answers
+      const responses = ["Hmm okay :)", "Nice try :)", "Almost there :)", "Close :)"];
+      return responses[Math.floor(Math.random() * responses.length)];
+    }
+  };
+
   const handleMicrophoneClick = () => {
     if (!isListening && !conversationComplete) {
       setShowListening(true);
@@ -178,9 +189,9 @@ export const ConversationScreen: React.FC<ConversationScreenProps> = ({
         if (scenario.id === "volvo") {
           // Smart follow-up for Volvo scenario
           const normalizedResponse = responseText.toLowerCase();
-          const hasYear =
-            coveredInConversation.includes("1927") ||
-            coveredInConversation.includes("year_attempted");
+          const hasCorrectYear = coveredInConversation.includes("1927");
+          const hasAttemptedYear = coveredInConversation.includes("year_attempted");
+          const hasYear = hasCorrectYear || hasAttemptedYear;
           const hasModel = coveredInConversation.includes("ÖV4");
           const hasInspiration = coveredInConversation.includes("Jakob");
 
@@ -206,18 +217,19 @@ export const ConversationScreen: React.FC<ConversationScreenProps> = ({
           const attempts = followUpAttempts[currentState] || 0;
           const isRetry = lastFollowUpQuestion && attempts > 0;
 
-          // Normal follow-up logic
+          // Normal follow-up logic with contextual responses
           if (!hasYear && (hasModel || hasInspiration)) {
             followUpText = "Good! But what year did we start production?";
           } else if (hasYear && !hasModel && !hasInspiration) {
-            followUpText =
-              "Good, you know the year! But what was the model name and who was it nicknamed after?";
+            // Check if year was correct or just attempted
+            const prefix = hasCorrectYear ? "Good, you know the year!" : getContextualPrefix(false);
+            followUpText = `${prefix} But what was the model name and who was it nicknamed after?`;
           } else if (hasYear && hasInspiration && !hasModel) {
-            followUpText =
-              "Great! You know the year and inspiration. What was the model name?";
+            const prefix = hasCorrectYear ? "Great! You know the year and inspiration." : getContextualPrefix(false);
+            followUpText = `${prefix} What was the model name?`;
           } else if (hasYear && hasModel && !hasInspiration) {
-            followUpText =
-              "Excellent! You know the year and model. Who was it nicknamed after?";
+            const prefix = hasCorrectYear ? "Excellent! You know the year and model." : getContextualPrefix(false);
+            followUpText = `${prefix} Who was it nicknamed after?`;
           } else if (!hasYear && !hasModel && hasInspiration) {
             followUpText =
               "Good, you know about Jakob! What year did we start production and what was the model name?";
@@ -414,14 +426,21 @@ export const ConversationScreen: React.FC<ConversationScreenProps> = ({
                 financial: financialAttempts + 1,
               }));
             } else if (needsPolicyDetails) {
-              followUpText =
+              // They mentioned policy but need more details
+              const prefix = hasPolicy ? getContextualPrefix(true) : "";
+              followUpText = prefix ? 
+                `${prefix} What about the policies makes this problematic? Can you be more specific?` :
                 "What about the policies makes this problematic? Can you be more specific?";
               setFollowUpAttempts((prev) => ({
                 ...prev,
                 financial: financialAttempts + 1,
               }));
             } else if (needsSpecifics) {
-              followUpText =
+              // They have some compliance words but need specifics
+              const hasPartialAnswer = hasCompliance || hasRegulations || hasPolicy;
+              const prefix = hasPartialAnswer ? getContextualPrefix(false) : "";
+              followUpText = prefix ?
+                `${prefix} But what specific regulations prevent you from giving me tips?` :
                 "But what specific regulations prevent you from giving me tips? I don't understand.";
               setFollowUpAttempts((prev) => ({
                 ...prev,
