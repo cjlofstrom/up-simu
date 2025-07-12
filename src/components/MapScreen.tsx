@@ -23,7 +23,8 @@ export const MapScreen: React.FC<MapScreenProps> = ({
   const [playerPosition, setPlayerPosition] = useState({ x: 100, y: 500 });
   const [isMoving, setIsMoving] = useState(false);
   const [isBouncing, setIsBouncing] = useState(false);
-  const [viewBox, setViewBox] = useState('0 400 800 600'); // Initial view focused on start
+  const [viewBox, setViewBox] = useState('0 0 800 600'); // Initial default view
+  const [isZoomedIn, setIsZoomedIn] = useState(false);
   const totalStars = gameState.getTotalStars();
 
   // Define the path points with straight angles
@@ -46,33 +47,40 @@ export const MapScreen: React.FC<MapScreenProps> = ({
 
   // Update player position and camera when returning to map
   useEffect(() => {
+    // Always reset to default view when returning to map
+    updateViewBox(0, 0, false);
+    
     if (currentCheckpoint === 2) {
       // Player at first checkpoint when showing second
       setPlayerPosition({ x: 400, y: 400 });
-      updateViewBox(400, 400);
     } else if (currentCheckpoint === 1) {
       // Check if we should be at checkpoint or start
       const checkpoint = checkpoints.find(cp => cp.id === 1);
       if (shouldBounce && checkpoint) {
         // Player stays at checkpoint and bounces
         setPlayerPosition({ x: checkpoint.x, y: checkpoint.y });
-        updateViewBox(checkpoint.x, checkpoint.y);
         performBounce();
       } else {
         // Player at start when showing first checkpoint fresh
         setPlayerPosition({ x: 100, y: 500 });
-        updateViewBox(100, 500);
       }
     }
   }, [currentCheckpoint, shouldBounce]);
   
-  const updateViewBox = (centerX: number, centerY: number) => {
-    // Center the view on the given position
-    const viewWidth = 800;
-    const viewHeight = 600;
-    const x = Math.max(0, centerX - viewWidth / 2);
-    const y = Math.max(0, centerY - viewHeight / 2);
-    setViewBox(`${x} ${y} ${viewWidth} ${viewHeight}`);
+  const updateViewBox = (centerX: number, centerY: number, zoomed: boolean = true) => {
+    if (!zoomed) {
+      // Default view
+      setViewBox('0 0 800 600');
+      setIsZoomedIn(false);
+    } else {
+      // Zoomed in view - double zoom (half the view dimensions)
+      const viewWidth = 400;
+      const viewHeight = 300;
+      const x = Math.max(0, centerX - viewWidth / 2);
+      const y = Math.max(0, centerY - viewHeight / 2);
+      setViewBox(`${x} ${y} ${viewWidth} ${viewHeight}`);
+      setIsZoomedIn(true);
+    }
   };
   
   const performBounce = () => {
@@ -86,11 +94,20 @@ export const MapScreen: React.FC<MapScreenProps> = ({
     if (!isMoving && activeCheckpoint) {
       setIsMoving(true);
       
+      // Zoom in on the player when starting movement
+      updateViewBox(playerPosition.x, playerPosition.y, true);
+      
       // Define the path segments to follow
       let segments: { from: { x: number; y: number }; to: { x: number; y: number } }[] = [];
       
       if (currentCheckpoint === 1) {
-        // Move from start to first checkpoint
+        // Move from start to first checkpoint (or replay from checkpoint if bouncing)
+        if (shouldBounce) {
+          // Already at checkpoint, just trigger the scenario
+          setTimeout(() => onCheckpointClick(currentCheckpoint), 500);
+          setIsMoving(false);
+          return;
+        }
         segments = [
           { from: { x: 100, y: 500 }, to: { x: 400, y: 500 } }, // Right
           { from: { x: 400, y: 500 }, to: { x: 400, y: 400 } }  // Up
@@ -183,7 +200,7 @@ export const MapScreen: React.FC<MapScreenProps> = ({
       </div>
 
       {/* Map SVG */}
-      <svg className="absolute inset-0 w-full h-full" viewBox={viewBox}>
+      <svg className="absolute inset-0 w-full h-full" viewBox={viewBox} style={{ transition: 'viewBox 0.5s ease-in-out' }}>
         
         {/* Path */}
         <path
