@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Send, User, Star, Mic } from "lucide-react";
 import { scenarios } from "../data/scenarios";
 import { ThinkingIndicator } from "./ThinkingIndicator";
 import { SendingIndicator } from "./SendingIndicator";
+import { SpeakAgainButton } from "./SpeakAgainButton";
 import { gameState } from "../services/gameState";
 import { ListeningOverlay } from "./ListeningOverlay";
 import { useSpeechRecognition } from "../hooks/useSpeechRecognition";
@@ -34,7 +35,11 @@ export const ConversationScreen: React.FC<ConversationScreenProps> = ({
   const [showListening, setShowListening] = useState(false);
   const [showSending, setShowSending] = useState(false);
   const [pendingVoiceText, setPendingVoiceText] = useState<string | null>(null);
+  const [wasVoiceInput, setWasVoiceInput] = useState(false);
+  const [voiceRetryCount, setVoiceRetryCount] = useState(0);
+  const [showSpeakAgain, setShowSpeakAgain] = useState(false);
   const scenario = scenarios[scenarioId];
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Get total stars
   const totalStars = gameState.getTotalStars();
@@ -48,6 +53,16 @@ export const ConversationScreen: React.FC<ConversationScreenProps> = ({
     },
     silenceTimeout: 1000 // 1 second
   });
+
+  // Scroll to bottom of messages
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  // Scroll when messages change or thinking/sending indicators appear
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, showThinking, showSending, showSpeakAgain]);
 
   // Initialize with first question
   React.useEffect(() => {
@@ -94,10 +109,18 @@ export const ConversationScreen: React.FC<ConversationScreenProps> = ({
     }
   };
 
+  const handleSpeakAgain = () => {
+    setShowSpeakAgain(false);
+    setResponse("");
+    setShowListening(true);
+    startListening();
+  };
+
   const handleSubmitVoice = () => {
     if (response.trim() && !isSubmitting) {
       setIsSubmitting(true);
       setShowSending(false);
+      setWasVoiceInput(true); // Mark as voice input
 
       // Add user message to conversation
       const userMessage: Message = {
@@ -355,8 +378,31 @@ export const ConversationScreen: React.FC<ConversationScreenProps> = ({
               allUserText.includes("trading"));
 
           if (isOffTopic) {
-            followUpText =
-              "Am I talking to the right person? I'm lost. Will call back later.";
+            // Check if this was voice input and we haven't retried yet
+            if (wasVoiceInput && voiceRetryCount === 0) {
+              followUpText = "Am I talking to the right person? I'm lost.";
+              setTimeout(() => {
+                setShowThinking(false);
+                const confusedMessage: Message = {
+                  id: (Date.now() + 1).toString(),
+                  text: followUpText,
+                  sender: "character",
+                };
+                setMessages((prev) => [...prev, confusedMessage]);
+                setShowSpeakAgain(true); // Show speak again button
+                setIsSubmitting(false);
+                setVoiceRetryCount(1);
+                setWasVoiceInput(false); // Reset for next attempt
+              }, 1500);
+              return;
+            } else if (wasVoiceInput && voiceRetryCount === 1) {
+              // Second voice attempt failed
+              followUpText = "Ok.. Will call back later.";
+            } else {
+              // Regular text input off-topic
+              followUpText = "Am I talking to the right person? I'm lost. Will call back later.";
+            }
+            
             // Mark conversation as complete after off-topic response
             setTimeout(() => {
               setShowThinking(false);
@@ -368,6 +414,7 @@ export const ConversationScreen: React.FC<ConversationScreenProps> = ({
               setMessages((prev) => [...prev, confusedMessage]);
               setConversationComplete(true);
               setIsSubmitting(false);
+              setShowSpeakAgain(false);
               // Submit with a special marker for off-topic
               // Wait 2 seconds to show the final message before processing
               setTimeout(
@@ -556,6 +603,9 @@ export const ConversationScreen: React.FC<ConversationScreenProps> = ({
             ))}
             {showThinking && <ThinkingIndicator avatar={scenario.character.avatar} />}
             {showSending && <SendingIndicator />}
+            {showSpeakAgain && <SpeakAgainButton onClick={handleSpeakAgain} />}
+            {/* Invisible element to scroll to */}
+            <div ref={messagesEndRef} />
           </div>
         </div>
       </div>
