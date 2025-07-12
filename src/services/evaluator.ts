@@ -18,6 +18,29 @@ export class ResponseEvaluator {
   private normalizeText(text: string): string {
     return text.toLowerCase().trim();
   }
+  
+  private checkPhraseSimilarity(text: string, phrase: string): boolean {
+    // Split phrase into words and check if they appear near each other
+    const words = phrase.split(' ');
+    if (words.length < 2) return false;
+    
+    // Check if all words appear within a reasonable distance
+    let lastIndex = -1;
+    for (const word of words) {
+      // Also check for partial matches (e.g., "inside" matches part of "insider")
+      const index = text.indexOf(word);
+      const partialIndex = text.search(new RegExp(word.slice(0, -1) + '\\w*'));
+      
+      if (index === -1 && partialIndex === -1) return false;
+      
+      const foundIndex = index !== -1 ? index : partialIndex;
+      // Words should be within 10 characters of each other
+      if (lastIndex !== -1 && foundIndex - lastIndex > 15) return false;
+      lastIndex = foundIndex;
+    }
+    
+    return true;
+  }
 
   private findKeywords(text: string, keywords: string[]): string[] {
     const normalizedText = this.normalizeText(text);
@@ -33,7 +56,18 @@ export class ResponseEvaluator {
       }
       // Handle variations for policy
       if (keyword === 'policy') {
-        return normalizedText.includes('policy') || normalizedText.includes('policies');
+        return normalizedText.includes('policy') || normalizedText.includes('policies') ||
+               normalizedText.includes('polici'); // Handle typos like "polici"
+      }
+      // Handle compliance variations
+      if (keyword === 'compliance') {
+        return normalizedText.includes('compliance') || normalizedText.includes('complian') ||
+               normalizedText.includes('comply');
+      }
+      // Handle regulations variations
+      if (keyword === 'regulations') {
+        return normalizedText.includes('regulation') || normalizedText.includes('regulat') ||
+               normalizedText.includes('rules') || normalizedText.includes('law');
       }
       // Handle "cannot" variations
       if (keyword === 'cannot') {
@@ -45,11 +79,21 @@ export class ResponseEvaluator {
         return normalizedText.includes('not allowed') || normalizedText.includes('not permitted') || 
                normalizedText.includes('against') || normalizedText.includes('prohibited');
       }
-      // Handle "insider trading" as a phrase
+      // Handle "insider trading" as a phrase with common variations
       if (keyword === 'insider trading') {
         return normalizedText.includes('insider trading') || 
-               (normalizedText.includes('insider') && normalizedText.includes('trad'));
+               normalizedText.includes('inside trading') || // Common typo/variation
+               (normalizedText.includes('insider') && normalizedText.includes('trad')) ||
+               (normalizedText.includes('inside') && normalizedText.includes('trad')) ||
+               this.checkPhraseSimilarity(normalizedText, 'insider trading');
       }
+      
+      // For multi-word phrases, use similarity check
+      if (keyword.includes(' ')) {
+        return normalizedText.includes(normalizedKeyword) || 
+               this.checkPhraseSimilarity(normalizedText, normalizedKeyword);
+      }
+      
       return normalizedText.includes(normalizedKeyword);
     });
   }

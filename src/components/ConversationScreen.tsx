@@ -1,8 +1,11 @@
-import React, { useState } from "react";
-import { Send, User, Star } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Send, User, Star, Mic } from "lucide-react";
 import { scenarios } from "../data/scenarios";
 import { ThinkingIndicator } from "./ThinkingIndicator";
+import { SendingIndicator } from "./SendingIndicator";
 import { gameState } from "../services/gameState";
+import { ListeningOverlay } from "./ListeningOverlay";
+import { useSpeechRecognition } from "../hooks/useSpeechRecognition";
 
 interface Message {
   id: string;
@@ -28,10 +31,23 @@ export const ConversationScreen: React.FC<ConversationScreenProps> = ({
   >({});
   const [lastFollowUpQuestion, setLastFollowUpQuestion] = useState<string>("");
   const [showThinking, setShowThinking] = useState(false);
+  const [showListening, setShowListening] = useState(false);
+  const [showSending, setShowSending] = useState(false);
+  const [pendingVoiceText, setPendingVoiceText] = useState<string | null>(null);
   const scenario = scenarios[scenarioId];
 
   // Get total stars
   const totalStars = gameState.getTotalStars();
+  
+  // Speech recognition hook with 1.5s silence timeout
+  const { isListening, transcript, error: speechError, startListening, stopListening } = useSpeechRecognition({
+    onTranscript: (text) => {
+      setResponse(text);
+      setShowListening(false);
+      setPendingVoiceText(text); // Store for auto-send
+    },
+    silenceTimeout: 1500 // 1.5 seconds
+  });
 
   // Initialize with first question
   React.useEffect(() => {
@@ -43,6 +59,47 @@ export const ConversationScreen: React.FC<ConversationScreenProps> = ({
       },
     ]);
   }, [scenario.question]);
+
+  // Auto-send voice input after 1.5s
+  useEffect(() => {
+    if (pendingVoiceText && !isSubmitting) {
+      // Show sending state
+      setShowSending(true);
+      
+      // Wait 1.5s then submit
+      const timer = setTimeout(() => {
+        setPendingVoiceText(null);
+        handleSubmitVoice();
+      }, 1500);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [pendingVoiceText]);
+
+  const handleMicrophoneClick = () => {
+    if (!isListening && !conversationComplete) {
+      setShowListening(true);
+      startListening();
+    }
+  };
+
+  const handleSubmitVoice = () => {
+    if (response.trim() && !isSubmitting) {
+      setIsSubmitting(true);
+      setShowSending(false);
+
+      // Add user message to conversation
+      const userMessage: Message = {
+        id: Date.now().toString(),
+        text: response,
+        sender: "user",
+      };
+      setMessages((prev) => [...prev, userMessage]);
+      
+      // Continue with regular submit logic
+      processUserResponse(response);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,6 +113,13 @@ export const ConversationScreen: React.FC<ConversationScreenProps> = ({
         sender: "user",
       };
       setMessages((prev) => [...prev, userMessage]);
+      
+      // Process the response
+      processUserResponse(response);
+    }
+  };
+  
+  const processUserResponse = (responseText: string) => {
 
       // Show thinking indicator
       setShowThinking(true);
@@ -64,7 +128,7 @@ export const ConversationScreen: React.FC<ConversationScreenProps> = ({
       const allUserMessages = messages
         .filter((m) => m.sender === "user")
         .map((m) => m.text)
-        .concat(response)
+        .concat(responseText)
         .join(" ");
       const normalizedAllResponses = allUserMessages.toLowerCase();
 
@@ -129,7 +193,10 @@ export const ConversationScreen: React.FC<ConversationScreenProps> = ({
               .join(" ");
             setConversationComplete(true);
             setIsSubmitting(false);
-            onSubmit(previousUserMessages);
+            // Wait 2 seconds to show the final message before processing
+            setTimeout(() => {
+              onSubmit(previousUserMessages);
+            }, 2000);
             return;
           }
 
@@ -178,7 +245,7 @@ export const ConversationScreen: React.FC<ConversationScreenProps> = ({
           }
         } else if (scenario.id === "financial") {
           // Smart follow-up for financial scenario
-          const normalizedResponse = response.toLowerCase();
+          const normalizedResponse = responseText.toLowerCase();
           const allUserText = allUserMessages.toLowerCase();
 
           // Check if response is on-topic
@@ -274,9 +341,10 @@ export const ConversationScreen: React.FC<ConversationScreenProps> = ({
               setConversationComplete(true);
               setIsSubmitting(false);
               // Submit with a special marker for off-topic
+              // Wait 2 seconds to show the final message before processing
               setTimeout(
                 () => onSubmit(allUserMessages + " [OFF_TOPIC]"),
-                1000,
+                2000,
               );
             }, 1500);
             return;
@@ -284,7 +352,10 @@ export const ConversationScreen: React.FC<ConversationScreenProps> = ({
             // Response is complete, end conversation successfully
             setConversationComplete(true);
             setIsSubmitting(false);
-            onSubmit(allUserMessages);
+            // Wait 2 seconds to show the final message before processing
+            setTimeout(() => {
+              onSubmit(allUserMessages);
+            }, 2000);
             return;
           } else if (followUpAttempts.forceEnd) {
             // This is a confirmation response after "Are you sure?", end conversation
@@ -295,7 +366,10 @@ export const ConversationScreen: React.FC<ConversationScreenProps> = ({
               .join(" ");
             setConversationComplete(true);
             setIsSubmitting(false);
-            onSubmit(previousUserMessages);
+            // Wait 2 seconds to show the final message before processing
+            setTimeout(() => {
+              onSubmit(previousUserMessages);
+            }, 2000);
             return;
           } else {
             // Response is incomplete, determine what follow-up is needed
@@ -353,7 +427,10 @@ export const ConversationScreen: React.FC<ConversationScreenProps> = ({
             setShowThinking(false);
             setConversationComplete(true);
             setIsSubmitting(false);
-            onSubmit(allUserMessages);
+            // Wait 2 seconds to show the final message before processing
+            setTimeout(() => {
+              onSubmit(allUserMessages);
+            }, 2000);
           }, 1000);
         }
       } else {
@@ -361,18 +438,35 @@ export const ConversationScreen: React.FC<ConversationScreenProps> = ({
         const allUserResponses = messages
           .filter((m) => m.sender === "user")
           .map((m) => m.text)
-          .concat(response)
+          .concat(responseText)
           .join(" ");
         setConversationComplete(true);
         setIsSubmitting(false);
-        onSubmit(allUserResponses);
+        // Wait 2 seconds to show the final message before processing
+        setTimeout(() => {
+          onSubmit(allUserResponses);
+        }, 2000);
       }
-    }
+      
+      // Clear the input
+      setResponse("");
   };
 
   return (
-    <div className="min-h-screen bg-gray-600 flex flex-col">
-      {/* Header */}
+    <>
+      {/* Listening Overlay */}
+      {showListening && (
+        <ListeningOverlay 
+          scenarioTitle={scenario.title}
+          onClose={() => {
+            stopListening();
+            setShowListening(false);
+          }}
+        />
+      )}
+      
+      <div className="min-h-screen bg-gray-600 flex flex-col">
+        {/* Header */}
       <div className="fixed top-0 left-0 right-0 z-10 px-4 py-6">
         <div className="flex justify-between items-center max-w-4xl mx-auto">
           <div className="flex items-center gap-4 bg-gray-800 text-white px-6 py-3 rounded-full">
@@ -412,6 +506,7 @@ export const ConversationScreen: React.FC<ConversationScreenProps> = ({
               </div>
             ))}
             {showThinking && <ThinkingIndicator avatar={scenario.character.avatar} />}
+            {showSending && <SendingIndicator />}
           </div>
         </div>
       </div>
@@ -435,30 +530,20 @@ export const ConversationScreen: React.FC<ConversationScreenProps> = ({
               disabled={isSubmitting || conversationComplete}
             />
             <button
-              type="submit"
-              disabled={
-                !response.trim() || isSubmitting || conversationComplete
-              }
-              className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center text-gray-400 hover:text-white transition-colors disabled:opacity-50"
-              aria-label="Send message"
+              type="button"
+              onClick={handleMicrophoneClick}
+              disabled={isSubmitting || conversationComplete || isListening}
+              className={`absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center transition-colors disabled:opacity-50 ${
+                isListening ? 'text-white bg-blue-500 rounded-full' : 'text-gray-400 hover:text-white'
+              }`}
+              aria-label="Voice input"
             >
-              <svg
-                className="w-6 h-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
-                />
-              </svg>
+              <Mic className="w-6 h-6" />
             </button>
           </div>
         </form>
       </div>
     </div>
+    </>
   );
 };
