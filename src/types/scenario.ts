@@ -11,6 +11,8 @@ export interface ScenarioContent {
   conversationIntro: string;
   questions: string[];
   requiredKeywords: string[];
+  bonusKeywords: string[];
+  forbiddenKeywords: string[];
   feedback: {
     excellent: string;
     good: string;

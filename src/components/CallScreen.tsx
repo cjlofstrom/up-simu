@@ -54,7 +54,7 @@ export const CallScreen: React.FC<CallScreenProps> = ({ scenario, onAnswer, onBa
             {/* Call Actions */}
             <div className="flex gap-8">
               <button
-                onClick={() => window.location.reload()}
+                onClick={onBackToMap}
                 className="w-20 h-20 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center transition-colors"
                 aria-label="Decline call"
               >

@@ -26,12 +26,14 @@ function App() {
   const [currentCheckpoint, setCurrentCheckpoint] = useState<number>(1);
   const [currentScenarioContent, setCurrentScenarioContent] = useState<ScenarioContent | null>(null);
   const [shouldBounce, setShouldBounce] = useState<boolean>(false);
+  const [shouldAutoMove, setShouldAutoMove] = useState<boolean>(false);
   const maxCheckpoints = 2; // Only 2 checkpoints as requested
 
   const handleSelectScenario = (scenarioId: string) => {
     setSelectedScenarioId(scenarioId);
     setCurrentCheckpoint(1);
     setShouldBounce(false);
+    setShouldAutoMove(false);
     const content = scenarioService.getScenarioForCheckpoint(scenarioId, 1);
     setCurrentScenarioContent(content);
     setCurrentScreen('map');
@@ -73,6 +75,8 @@ function App() {
         setCurrentCheckpoint(nextCheckpoint);
         const content = scenarioService.getScenarioForCheckpoint(selectedScenarioId, nextCheckpoint);
         setCurrentScenarioContent(content);
+        // Set flag to trigger automatic movement
+        setShouldAutoMove(true);
         setCurrentScreen('map');
       } else {
         setCurrentScreen('progress');
@@ -98,6 +102,7 @@ function App() {
       const content = scenarioService.getScenarioForCheckpoint(selectedScenarioId, checkpoint);
       setCurrentScenarioContent(content);
       setShouldBounce(false); // Reset bounce state
+      setShouldAutoMove(false); // Reset auto-move state
       setCurrentScreen('intro');
     }
   };
@@ -144,6 +149,7 @@ function App() {
           mapImage={currentCheckpoint === 1 ? map1Image : map2Image}
           playerAvatar={playerAvatar}
           shouldBounce={shouldBounce}
+          shouldAutoMove={shouldAutoMove}
         />
       ) : null;
     

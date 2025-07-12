@@ -10,6 +10,7 @@ interface MapScreenProps {
   mapImage: string;
   playerAvatar: string;
   shouldBounce?: boolean;
+  shouldAutoMove?: boolean;
 }
 
 export const MapScreen: React.FC<MapScreenProps> = ({
@@ -18,7 +19,8 @@ export const MapScreen: React.FC<MapScreenProps> = ({
   onCheckpointClick,
   mapImage,
   playerAvatar,
-  shouldBounce = false
+  shouldBounce = false,
+  shouldAutoMove = false
 }) => {
   const [playerPosition, setPlayerPosition] = useState({ x: 100, y: 500 });
   const [isMoving, setIsMoving] = useState(false);
@@ -51,8 +53,19 @@ export const MapScreen: React.FC<MapScreenProps> = ({
     updateViewBox(0, 0, false);
     
     if (currentCheckpoint === 2) {
-      // Player at first checkpoint when showing second
-      setPlayerPosition({ x: 400, y: 400 });
+      // If we just succeeded checkpoint 1, start at checkpoint 1 and auto-move
+      if (shouldAutoMove) {
+        setPlayerPosition({ x: 400, y: 400 });
+        setTimeout(() => {
+          triggerAutoMovement();
+        }, 500); // Small delay to see the map first
+      } else {
+        // Otherwise, player should be at checkpoint 2 already
+        setPlayerPosition({ x: 700, y: 250 });
+        if (shouldBounce) {
+          performBounce();
+        }
+      }
     } else if (currentCheckpoint === 1) {
       // Check if we should be at checkpoint or start
       const checkpoint = checkpoints.find(cp => cp.id === 1);
@@ -63,9 +76,13 @@ export const MapScreen: React.FC<MapScreenProps> = ({
       } else {
         // Player at start when showing first checkpoint fresh
         setPlayerPosition({ x: 100, y: 500 });
+        // Auto-move to first checkpoint after delay
+        setTimeout(() => {
+          triggerAutoMovementToFirst();
+        }, 1500); // 1.5 seconds delay
       }
     }
-  }, [currentCheckpoint, shouldBounce]);
+  }, [currentCheckpoint, shouldBounce, shouldAutoMove]);
   
   const updateViewBox = (centerX: number, centerY: number, zoomed: boolean = true) => {
     if (!zoomed) {
@@ -88,6 +105,103 @@ export const MapScreen: React.FC<MapScreenProps> = ({
     setTimeout(() => {
       setIsBouncing(false);
     }, 1000); // Bounce for 1 second
+  };
+
+  const triggerAutoMovement = () => {
+    if (!isMoving && currentCheckpoint === 2) {
+      setIsMoving(true);
+      
+      // Zoom in on the player when starting movement
+      updateViewBox(playerPosition.x, playerPosition.y, true);
+      
+      // Move from first checkpoint to second
+      const segments = [
+        { from: { x: 400, y: 400 }, to: { x: 700, y: 400 } }, // Right
+        { from: { x: 700, y: 400 }, to: { x: 700, y: 250 } }  // Up
+      ];
+      
+      animateMovement(segments, () => {
+        // After reaching the checkpoint, trigger the scenario
+        setTimeout(() => onCheckpointClick(2), 300);
+      });
+    }
+  };
+
+  const triggerAutoMovementToFirst = () => {
+    if (!isMoving && currentCheckpoint === 1 && !shouldBounce) {
+      setIsMoving(true);
+      
+      // Zoom in on the player when starting movement
+      updateViewBox(playerPosition.x, playerPosition.y, true);
+      
+      // Move from start to first checkpoint
+      const segments = [
+        { from: { x: 100, y: 500 }, to: { x: 400, y: 500 } }, // Right
+        { from: { x: 400, y: 500 }, to: { x: 400, y: 400 } }  // Up
+      ];
+      
+      animateMovement(segments, () => {
+        // After reaching the checkpoint, trigger the scenario
+        setTimeout(() => onCheckpointClick(1), 300);
+      });
+    }
+  };
+
+  const animateMovement = (segments: { from: { x: number; y: number }; to: { x: number; y: number } }[], onComplete?: () => void) => {
+    // Calculate total distance
+    const totalDistance = segments.reduce((sum, seg) => {
+      const dx = seg.to.x - seg.from.x;
+      const dy = seg.to.y - seg.from.y;
+      return sum + Math.sqrt(dx * dx + dy * dy);
+    }, 0);
+    
+    const duration = 1500; // 1.5 seconds total
+    const startTime = Date.now();
+    
+    const animate = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      
+      // Easing
+      const eased = progress < 0.5 
+        ? 2 * progress * progress 
+        : -1 + (4 - 2 * progress) * progress;
+      
+      // Calculate position along path
+      const targetDistance = totalDistance * eased;
+      let accumulatedDistance = 0;
+      let newPosition = playerPosition;
+      
+      for (const segment of segments) {
+        const dx = segment.to.x - segment.from.x;
+        const dy = segment.to.y - segment.from.y;
+        const segmentLength = Math.sqrt(dx * dx + dy * dy);
+        
+        if (accumulatedDistance + segmentLength >= targetDistance) {
+          // We're on this segment
+          const segmentProgress = (targetDistance - accumulatedDistance) / segmentLength;
+          newPosition = {
+            x: segment.from.x + dx * segmentProgress,
+            y: segment.from.y + dy * segmentProgress
+          };
+          break;
+        }
+        
+        accumulatedDistance += segmentLength;
+      }
+      
+      setPlayerPosition(newPosition);
+      updateViewBox(newPosition.x, newPosition.y);
+      
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      } else {
+        setIsMoving(false);
+        if (onComplete) onComplete();
+      }
+    };
+    
+    requestAnimationFrame(animate);
   };
 
   const handleCheckpointClick = () => {
@@ -120,60 +234,9 @@ export const MapScreen: React.FC<MapScreenProps> = ({
         ];
       }
       
-      // Calculate total distance
-      const totalDistance = segments.reduce((sum, seg) => {
-        const dx = seg.to.x - seg.from.x;
-        const dy = seg.to.y - seg.from.y;
-        return sum + Math.sqrt(dx * dx + dy * dy);
-      }, 0);
-      
-      const duration = 1500; // 1.5 seconds total
-      const startTime = Date.now();
-      
-      const animate = () => {
-        const elapsed = Date.now() - startTime;
-        const progress = Math.min(elapsed / duration, 1);
-        
-        // Easing
-        const eased = progress < 0.5 
-          ? 2 * progress * progress 
-          : -1 + (4 - 2 * progress) * progress;
-        
-        // Calculate position along path
-        const targetDistance = totalDistance * eased;
-        let accumulatedDistance = 0;
-        let newPosition = playerPosition;
-        
-        for (const segment of segments) {
-          const dx = segment.to.x - segment.from.x;
-          const dy = segment.to.y - segment.from.y;
-          const segmentLength = Math.sqrt(dx * dx + dy * dy);
-          
-          if (accumulatedDistance + segmentLength >= targetDistance) {
-            // We're on this segment
-            const segmentProgress = (targetDistance - accumulatedDistance) / segmentLength;
-            newPosition = {
-              x: segment.from.x + dx * segmentProgress,
-              y: segment.from.y + dy * segmentProgress
-            };
-            break;
-          }
-          
-          accumulatedDistance += segmentLength;
-        }
-        
-        setPlayerPosition(newPosition);
-        updateViewBox(newPosition.x, newPosition.y);
-        
-        if (progress < 1) {
-          requestAnimationFrame(animate);
-        } else {
-          setIsMoving(false);
-          setTimeout(() => onCheckpointClick(currentCheckpoint), 300);
-        }
-      };
-      
-      requestAnimationFrame(animate);
+      animateMovement(segments, () => {
+        setTimeout(() => onCheckpointClick(currentCheckpoint), 300);
+      });
     }
   };
 

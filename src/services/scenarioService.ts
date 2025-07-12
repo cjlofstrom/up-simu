@@ -23,6 +23,8 @@ export class ScenarioService {
       conversationIntro: "Now it's time to get real with Financial Compliance. It's 10am at the office.",
       questions: customQuestions || [scenario.question],
       requiredKeywords: scenario.keywords.required,
+      bonusKeywords: scenario.keywords.bonus,
+      forbiddenKeywords: scenario.keywords.forbidden,
       feedback: {
         excellent: scenario.feedback.perfect,
         good: scenario.feedback.good,

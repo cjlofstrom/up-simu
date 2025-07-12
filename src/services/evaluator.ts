@@ -126,8 +126,8 @@ export class ResponseEvaluator {
     // For compatibility, create keywords object from ScenarioContent
     const keywords = {
       required: scenario.requiredKeywords,
-      bonus: [],
-      forbidden: []
+      bonus: scenario.bonusKeywords,
+      forbidden: scenario.forbiddenKeywords
     };
     
     // Check for off-topic marker
@@ -321,7 +321,24 @@ export class ResponseEvaluator {
       effectiveForbiddenCount = nonYearForbiddenWords.length;
     }
     
-    if (effectiveForbiddenCount > 0 && !hasCloseNumericalAnswer) {
+    // Check first for 3-star financial responses with insider trading
+    console.log('Checking for 3-star insider trading response:', {
+      isFinancialScenario,
+      hasFinancialRefusal,
+      bonusKeywordsFound,
+      includesInsiderTrading: bonusKeywordsFound.includes('insider trading'),
+      includesInsider: bonusKeywordsFound.includes('insider'),
+      normalizedResponse: this.normalizeText(userResponse),
+      hasNoResponse,
+      actualRequiredFound,
+      requiredKeywordsFound
+    });
+    
+    if (isFinancialScenario && hasFinancialRefusal && 
+        (bonusKeywordsFound.includes('insider trading') || bonusKeywordsFound.includes('insider'))) {
+      stars = 3;
+      feedback = "You're on the money! Ruth seems irritated but you managed to not give in.";
+    } else if (effectiveForbiddenCount > 0 && !hasCloseNumericalAnswer) {
       stars = 0;
       feedback = scenario.feedback.needsImprovement;
     } else if (hasCloseNumericalAnswer && effectiveForbiddenCount > 0) {
@@ -347,26 +364,16 @@ export class ResponseEvaluator {
         feedback = "You're on the money! Ruth seems irritated but you managed to not give in.";
       }
       
-      // Give 3 stars for responses that mention insider trading with a proper refusal
-      if (isFinancialScenario && hasFinancialRefusal && 
-          bonusKeywordsFound.includes('insider trading')) {
-        stars = 3;
-        feedback = "You're on the money! Ruth seems irritated but you managed to not give in.";
-      }
+      // Already handled above - removed duplicate check
     } else if (actualRequiredFound === totalRequired - 1 || (actualRequiredFound >= 2 && totalRequired === 3) || 
                (isFinancialScenario && actualRequiredFound >= 2)) {
       // 2/3 key points covered = 2 stars, or 2+ keywords for financial scenario
       stars = 2;
       feedback = scenario.feedback.good;
       
-      // Check first if this is a 3-star response with insider trading
-      if (isFinancialScenario && hasFinancialRefusal && 
-          bonusKeywordsFound.includes('insider trading')) {
-        stars = 3;
-        feedback = "You're on the money! Ruth seems irritated but you managed to not give in.";
-      }
+      // Already handled at the beginning - removed duplicate check
       // Special contextual feedback for 2-star financial responses
-      else if (isFinancialScenario && actualRequiredFound === 2) {
+      if (isFinancialScenario && actualRequiredFound === 2) {
         feedback = "Good start, but you could strengthen your response by mentioning specific regulations or the legal implications of insider trading.";
       }
       
@@ -383,11 +390,7 @@ export class ResponseEvaluator {
         stars = 2;
         feedback = scenario.feedback.good;
         
-        // Check if this should be upgraded to 3 stars for insider trading
-        if (isFinancialScenario && bonusKeywordsFound.includes('insider trading')) {
-          stars = 3;
-          feedback = "You're on the money! Ruth seems irritated but you managed to not give in.";
-        }
+        // Already handled at the beginning - removed duplicate check
         
         // Debug logging
         console.log('Financial refusal with keywords:', { 
