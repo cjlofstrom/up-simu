@@ -9,6 +9,7 @@ interface MapScreenProps {
   onCheckpointClick: (checkpoint: number) => void;
   mapImage: string;
   playerAvatar: string;
+  shouldBounce?: boolean;
 }
 
 export const MapScreen: React.FC<MapScreenProps> = ({
@@ -16,10 +17,13 @@ export const MapScreen: React.FC<MapScreenProps> = ({
   scenario,
   onCheckpointClick,
   mapImage,
-  playerAvatar
+  playerAvatar,
+  shouldBounce = false
 }) => {
   const [playerPosition, setPlayerPosition] = useState({ x: 100, y: 500 });
   const [isMoving, setIsMoving] = useState(false);
+  const [isBouncing, setIsBouncing] = useState(false);
+  const [viewBox, setViewBox] = useState('0 400 800 600'); // Initial view focused on start
   const totalStars = gameState.getTotalStars();
 
   // Define the path points with straight angles
@@ -45,11 +49,26 @@ export const MapScreen: React.FC<MapScreenProps> = ({
     if (currentCheckpoint === 2) {
       // Player at first checkpoint when showing second
       setPlayerPosition({ x: 400, y: 400 });
-    } else {
-      // Player at start when showing first
-      setPlayerPosition({ x: 100, y: 500 });
+    } else if (currentCheckpoint === 1) {
+      // Check if we should be at checkpoint or start
+      const checkpoint = checkpoints.find(cp => cp.id === 1);
+      if (shouldBounce && checkpoint) {
+        // Player stays at checkpoint and bounces
+        setPlayerPosition({ x: checkpoint.x, y: checkpoint.y });
+        performBounce();
+      } else {
+        // Player at start when showing first checkpoint fresh
+        setPlayerPosition({ x: 100, y: 500 });
+      }
     }
-  }, [currentCheckpoint]);
+  }, [currentCheckpoint, shouldBounce]);
+  
+  const performBounce = () => {
+    setIsBouncing(true);
+    setTimeout(() => {
+      setIsBouncing(false);
+    }, 1000); // Bounce for 1 second
+  };
 
   const handleCheckpointClick = () => {
     if (!isMoving && activeCheckpoint) {
@@ -185,6 +204,16 @@ export const MapScreen: React.FC<MapScreenProps> = ({
           />
         )}
         
+        {/* Starting point circle */}
+        <circle
+          cx={100}
+          cy={500}
+          r="20"
+          fill="#6b7280"
+          stroke="white"
+          strokeWidth="3"
+        />
+        
         {/* Checkpoints */}
         {checkpoints.map((checkpoint) => {
           const isActive = checkpoint.id === currentCheckpoint;
@@ -233,14 +262,32 @@ export const MapScreen: React.FC<MapScreenProps> = ({
         })}
         
         {/* Player */}
-        <image
-          href={playerAvatar}
-          x={playerPosition.x - 25}
-          y={playerPosition.y - 25}
-          width="50"
-          height="50"
-        />
+        <g className={isBouncing ? 'animate-bounce' : ''}>
+          <image
+            href={playerAvatar}
+            x={playerPosition.x - 25}
+            y={playerPosition.y - 25}
+            width="50"
+            height="50"
+          />
+        </g>
       </svg>
+      
+      {/* Add bounce animation styles */}
+      <style jsx>{`
+        @keyframes bounce {
+          0%, 100% {
+            transform: translateY(0);
+          }
+          50% {
+            transform: translateY(-20px);
+          }
+        }
+        
+        .animate-bounce {
+          animation: bounce 0.5s ease-in-out infinite;
+        }
+      `}</style>
     </div>
   );
 };

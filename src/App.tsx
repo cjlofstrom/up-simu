@@ -25,11 +25,13 @@ function App() {
   const [currentAttempts, setCurrentAttempts] = useState<number>(0);
   const [currentCheckpoint, setCurrentCheckpoint] = useState<number>(1);
   const [currentScenarioContent, setCurrentScenarioContent] = useState<ScenarioContent | null>(null);
+  const [shouldBounce, setShouldBounce] = useState<boolean>(false);
   const maxCheckpoints = 2; // Only 2 checkpoints as requested
 
   const handleSelectScenario = (scenarioId: string) => {
     setSelectedScenarioId(scenarioId);
     setCurrentCheckpoint(1);
+    setShouldBounce(false);
     const content = scenarioService.getScenarioForCheckpoint(scenarioId, 1);
     setCurrentScenarioContent(content);
     setCurrentScreen('map');
@@ -58,18 +60,28 @@ function App() {
   };
 
   const handleContinue = () => {
-    if (currentCheckpoint < maxCheckpoints) {
-      const nextCheckpoint = currentCheckpoint + 1;
-      setCurrentCheckpoint(nextCheckpoint);
-      const content = scenarioService.getScenarioForCheckpoint(selectedScenarioId, nextCheckpoint);
-      setCurrentScenarioContent(content);
+    // Check if user got enough stars to progress
+    if (evaluation && evaluation.stars <= 1.5) {
+      // Not enough stars - return to map but stay at same checkpoint
+      setShouldBounce(true);
       setCurrentScreen('map');
     } else {
-      setCurrentScreen('progress');
-      setSelectedScenarioId('');
-      setEvaluation(null);
-      setCurrentCheckpoint(1);
-      setCurrentScenarioContent(null);
+      // Enough stars - progress to next checkpoint
+      setShouldBounce(false);
+      if (currentCheckpoint < maxCheckpoints) {
+        const nextCheckpoint = currentCheckpoint + 1;
+        setCurrentCheckpoint(nextCheckpoint);
+        const content = scenarioService.getScenarioForCheckpoint(selectedScenarioId, nextCheckpoint);
+        setCurrentScenarioContent(content);
+        setCurrentScreen('map');
+      } else {
+        setCurrentScreen('progress');
+        setSelectedScenarioId('');
+        setEvaluation(null);
+        setCurrentCheckpoint(1);
+        setCurrentScenarioContent(null);
+        setShouldBounce(false);
+      }
     }
   };
 
@@ -85,6 +97,7 @@ function App() {
     if (checkpoint === currentCheckpoint) {
       const content = scenarioService.getScenarioForCheckpoint(selectedScenarioId, checkpoint);
       setCurrentScenarioContent(content);
+      setShouldBounce(false); // Reset bounce state
       setCurrentScreen('intro');
     }
   };
@@ -126,6 +139,7 @@ function App() {
           onCheckpointClick={handleCheckpointClick}
           mapImage={currentCheckpoint === 1 ? map1Image : map2Image}
           playerAvatar={playerAvatar}
+          shouldBounce={shouldBounce}
         />
       ) : null;
     
